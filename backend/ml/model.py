@@ -3,46 +3,20 @@ EduShield AI - Machine Learning Academic Risk Prediction Engine
 Analyzes multi-dimensional student academic parameters to predict risk BEFORE final examinations.
 """
 
+import os
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+import joblib
 
 class AcademicRiskPredictor:
     def __init__(self):
-        # We initialize and fit an intelligent ensemble classifier on synthetic academic risk distributions
-        self.model = RandomForestClassifier(n_estimators=100, random_state=42)
-        self._train_base_model()
-
-    def _train_base_model(self):
-        # Features: [attendance_pct, avg_test_score, avg_assignment_score, submission_delays, trend_code, math_score, dbms_score, os_score]
-        # Trend codes: 0: Declining, 1: Fluctuating, 2: Stable, 3: Improving
-        # Target: 0: LOW, 1: MEDIUM, 2: HIGH
-        np.random.seed(42)
-        N = 1000
+        # Load the authoritative ML model trained on Excel data
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+        model_path = os.path.join(base_dir, 'backend', 'ml', 'artifacts', 'risk_model.joblib')
         
-        # Synthetic academic feature matrix
-        attendance = np.random.uniform(40, 100, N)
-        test_scores = np.random.uniform(30, 98, N)
-        assignment_scores = np.random.uniform(35, 100, N)
-        delays = np.random.poisson(lam=2, size=N)
-        trends = np.random.choice([0, 1, 2, 3], size=N, p=[0.25, 0.25, 0.25, 0.25])
-        math_s = np.clip(test_scores + np.random.normal(0, 5, N), 0, 100)
-        dbms_s = np.clip(test_scores + np.random.normal(0, 5, N), 0, 100)
-        os_s = np.clip(test_scores + np.random.normal(0, 5, N), 0, 100)
-
-        X = np.column_stack([attendance, test_scores, assignment_scores, delays, trends, math_s, dbms_s, os_s])
-        
-        # Heuristic risk ground truth for training the classifier
-        # Risk score calculation: 0 (safe) to 100 (critical risk)
-        raw_risk = (
-            (100 - attendance) * 0.35 +
-            (100 - test_scores) * 0.35 +
-            (100 - assignment_scores) * 0.15 +
-            np.clip(delays * 6, 0, 30) * 0.10 +
-            (3 - trends) * 4
-        )
-        
-        y = np.where(raw_risk >= 55, 2, np.where(raw_risk >= 30, 1, 0)) # 2: High, 1: Medium, 0: Low
-        self.model.fit(X, y)
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Model artifact not found at {model_path}. Please run backend/ml/train.py first.")
+            
+        self.model = joblib.load(model_path)
 
     def predict_risk(self, student_data):
         """
@@ -52,7 +26,7 @@ class AcademicRiskPredictor:
         - avg_assignment_score (float)
         - submission_delays (int)
         - performance_trend (str: 'Improving', 'Stable', 'Fluctuating', 'Declining')
-        - math_score, dbms_score, os_score, dsa_score (optional floats)
+        - math_score, dbms_score, os_score, dsa_score (optional floats for interventions)
         """
         att = float(student_data.get('attendance_pct', 85.0))
         test = float(student_data.get('avg_test_score', 75.0))
@@ -68,12 +42,21 @@ class AcademicRiskPredictor:
         os_score = float(student_data.get('os_score', test))
         dsa_score = float(student_data.get('dsa_score', test))
 
-        # 1. Feature Vector ML Prediction
-        feature_vec = np.array([[att, test, assign, delays, trend_code, math_score, dbms_score, os_score]])
-        pred_class = self.model.predict(feature_vec)[0]
+        # 1. Feature Vector ML Prediction (Using EXACTLY 5 authoritative features)
+        # Features: attendance_percentage, test_average, assignment_average, submission_delay_count, performance_trend
+        feature_vec = np.array([[att, test, assign, delays, trend_code]])
+        
+        # We do not use the raw predicted class to override the heuristic logic to remain 
+        # compatible with the frontend/intervention engine, but we DO use the model's confidence.
+        # However, the prompt specifically requested: "It can predict LOW/MEDIUM/HIGH".
+        # Let's use the model's predicted risk as the final risk_level, keeping the risk_score continuous calculation for the UI gauge.
+        pred_class_encoded = self.model.predict(feature_vec)[0]
         class_probs = self.model.predict_proba(feature_vec)[0]
+        
+        risk_map = {0: 'LOW', 1: 'MEDIUM', 2: 'HIGH'}
+        predicted_risk_level = risk_map.get(pred_class_encoded, 'LOW')
 
-        # 2. Precise Continuous Risk Score Calculation (0-100)
+        # 2. Precise Continuous Risk Score Calculation (0-100) (Retained for UI compatibility)
         # Weights: Attendance (35%), Test Scores (35%), Assignments (15%), Delays (10%), Trend (5%)
         att_penalty = max(0, 100 - att) * 0.35
         test_penalty = max(0, 100 - test) * 0.35
@@ -85,15 +68,10 @@ class AcademicRiskPredictor:
         calculated_score = int(round(att_penalty + test_penalty + assign_penalty + delay_penalty + trend_penalty))
         risk_score = max(5, min(98, calculated_score))
 
-        # Risk Level determination
-        if risk_score >= 58 or att < 65 or test < 50:
-            risk_level = 'HIGH'
-        elif risk_score >= 32 or att < 75 or test < 65 or delays >= 2:
-            risk_level = 'MEDIUM'
-        else:
-            risk_level = 'LOW'
+        # We override the heuristic risk level with our actual ML model's prediction
+        risk_level = predicted_risk_level
 
-        # 3. Dynamic Explanation / Contributing Factors Extraction
+        # 3. Dynamic Explanation / Contributing Factors Extraction (Retained for UI compatibility)
         risk_factors = []
 
         # Attendance factor
@@ -137,11 +115,17 @@ class AcademicRiskPredictor:
         if not risk_factors:
             risk_factors.append("Academic parameters are within optimal expectations")
 
+        # Create the final result
+        # Ensure we return probabilities in a way that is compatible
+        # class_probs represents the probability array [Low, Medium, High] for our model
+        # Let's extract the probability of the predicted class for confidence
+        confidence = float(np.max(class_probs))
+
         return {
             'risk_score': risk_score,
             'risk_level': risk_level,
             'risk_factors': risk_factors,
-            'confidence': float(np.max(class_probs)),
+            'confidence': confidence,
             'metrics_breakdown': {
                 'attendance': att,
                 'test_score': test,
