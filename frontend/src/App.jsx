@@ -7,6 +7,8 @@ import FacultyPortal from './pages/FacultyPortal';
 function App() {
   const [role, setRole] = useState(null); // 'student' | 'faculty' | null
   const [user, setUser] = useState(null);
+  const [activeTab, setActiveTab] = useState(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Restore saved session if any
   useEffect(() => {
@@ -16,6 +18,7 @@ function App() {
       if (savedRole && savedUser) {
         setRole(savedRole);
         setUser(JSON.parse(savedUser));
+        setActiveTab(savedRole === 'student' ? 'academic' : 'watchlist');
       }
     } catch (e) {
       console.warn("Storage restore error", e);
@@ -25,6 +28,7 @@ function App() {
   const handleLoginSuccess = (userRole, userData) => {
     setRole(userRole);
     setUser(userData);
+    setActiveTab(userRole === 'student' ? 'academic' : 'watchlist');
     try {
       localStorage.setItem('edushield_role', userRole);
       localStorage.setItem('edushield_user', JSON.stringify(userData));
@@ -34,6 +38,7 @@ function App() {
   const handleLogout = () => {
     setRole(null);
     setUser(null);
+    setActiveTab(null);
     try {
       localStorage.removeItem('edushield_role');
       localStorage.removeItem('edushield_user');
@@ -41,32 +46,40 @@ function App() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className={`${role ? 'app-shell' : ''} ${sidebarCollapsed ? 'sidebar-is-collapsed' : ''}`} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {role && (
         <Navbar
           user={user}
           role={role}
           onLogout={handleLogout}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          collapsed={sidebarCollapsed}
+          setCollapsed={setSidebarCollapsed}
         />
       )}
 
-      <main style={{ flex: 1 }}>
+      <main className={role ? 'app-main' : undefined} style={{ flex: 1 }}>
         {!role ? (
           <LoginPage onLoginSuccess={handleLoginSuccess} />
         ) : role === 'student' ? (
           <StudentPortal
             student={user}
             onRefresh={() => {}}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
           />
         ) : (
           <FacultyPortal
             faculty={user}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
           />
         )}
       </main>
 
       {/* Footer */}
-      <footer style={{
+      <footer className={role ? 'app-footer' : undefined} style={{
         borderTop: '1px solid var(--border-color)',
         padding: '16px 24px',
         textAlign: 'center',

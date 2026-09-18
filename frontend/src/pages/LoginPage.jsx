@@ -59,7 +59,6 @@ export default function LoginPage({ onLoginSuccess }) {
       padding: '24px 16px',
       position: 'relative'
     }}>
-      {/* Background Glow Orbs */}
       <div style={{
         position: 'absolute',
         top: '15%',
@@ -81,7 +80,6 @@ export default function LoginPage({ onLoginSuccess }) {
         pointerEvents: 'none'
       }} />
 
-      {/* Main Login Card */}
       <div className="glass-panel" style={{
         maxWidth: '520px',
         width: '100%',
@@ -90,7 +88,6 @@ export default function LoginPage({ onLoginSuccess }) {
         zIndex: 10,
         boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
       }}>
-        {/* Header Branding */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
           <div style={{
             display: 'inline-flex',
@@ -113,7 +110,6 @@ export default function LoginPage({ onLoginSuccess }) {
           </p>
         </div>
 
-        {/* Role Selector Tabs */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
@@ -124,27 +120,16 @@ export default function LoginPage({ onLoginSuccess }) {
           marginBottom: '24px',
           border: '1px solid var(--border-color)'
         }}>
-          <button
-            type="button"
-            className={`tab-btn ${activeTab === 'student' ? 'active' : ''}`}
-            style={{ justifyContent: 'center' }}
-            onClick={() => { setActiveTab('student'); setErrorMsg(''); }}
-          >
+          <button type="button" className={`tab-btn ${activeTab === 'student' ? 'active' : ''}`} style={{ justifyContent: 'center' }} onClick={() => { setActiveTab('student'); setErrorMsg(''); }}>
             <User size={18} />
             <span>Student Login</span>
           </button>
-          <button
-            type="button"
-            className={`tab-btn ${activeTab === 'faculty' ? 'active' : ''}`}
-            style={{ justifyContent: 'center' }}
-            onClick={() => { setActiveTab('faculty'); setErrorMsg(''); }}
-          >
+          <button type="button" className={`tab-btn ${activeTab === 'faculty' ? 'active' : ''}`} style={{ justifyContent: 'center' }} onClick={() => { setActiveTab('faculty'); setErrorMsg(''); }}>
             <Building size={18} />
             <span>Admin / Faculty</span>
           </button>
         </div>
 
-        {/* Error Notification */}
         {errorMsg && (
           <div style={{
             padding: '12px 16px',
@@ -163,72 +148,37 @@ export default function LoginPage({ onLoginSuccess }) {
           </div>
         )}
 
-        {/* Student Login Form */}
         {activeTab === 'student' ? (
           <div>
             <form onSubmit={handleStudentSubmit}>
               <div className="form-group">
-                <label className="form-label" htmlFor="regNumberInput">
-                  Enter Registration Number
-                </label>
-                <input
-                  id="regNumberInput"
-                  type="text"
-                  className="form-input"
-                  placeholder="Enter your registration number"
-                  value={regNumber}
-                  onChange={(e) => setRegNumber(e.target.value)}
-                  autoFocus
-                />
+                <label className="form-label" htmlFor="regNumberInput">Enter Registration Number</label>
+                <input id="regNumberInput" type="text" className="form-input" placeholder="Enter your registration number" value={regNumber} onChange={(e) => setRegNumber(e.target.value)} autoFocus />
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
                   Students sign in using only their official registration identifier.
                 </span>
               </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn btn-primary"
-                style={{ width: '100%', marginTop: '8px', padding: '12px' }}
-              >
+              <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', marginTop: '8px', padding: '12px' }}>
                 {loading ? 'Analyzing Profile...' : 'Sign In as Student'}
                 <ArrowRight size={18} />
               </button>
             </form>
-
           </div>
         ) : (
-          /* Faculty Login Form */
           <div>
             <form onSubmit={handleFacultySubmit}>
               <div className="form-group">
-                <label className="form-label" htmlFor="facultyIdInput">
-                  Faculty Advisor ID
-                </label>
-                <input
-                  id="facultyIdInput"
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. FAC001"
-                  value={facultyId}
-                  onChange={(e) => setFacultyId(e.target.value)}
-                />
+                <label className="form-label" htmlFor="facultyIdInput">Faculty Advisor ID</label>
+                <input id="facultyIdInput" type="text" className="form-input" placeholder="e.g. FAC001" value={facultyId} onChange={(e) => setFacultyId(e.target.value)} />
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
                   Default Faculty: Dr. Arvind Swaminathan (Information Technology)
                 </span>
               </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn btn-accent"
-                style={{ width: '100%', marginTop: '8px', padding: '12px' }}
-              >
+              <button type="submit" disabled={loading} className="btn btn-accent" style={{ width: '100%', marginTop: '8px', padding: '12px' }}>
                 {loading ? 'Authenticating...' : 'Enter Faculty Dashboard'}
                 <ArrowRight size={18} />
               </button>
             </form>
-
             <div style={{ marginTop: '24px', padding: '14px', background: 'rgba(139, 92, 246, 0.1)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(139, 92, 246, 0.2)' }}>
               <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--accent-purple)', marginBottom: '4px' }}>
                 Faculty Authority Capabilities:

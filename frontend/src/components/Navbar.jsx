@@ -1,108 +1,119 @@
-import React from 'react';
-import { Shield, User, LogOut, GraduationCap, Award, BookOpen, Clock, Activity, FileText } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import {
+  Activity, Award, BarChart3, BookOpen, Calendar, ChevronLeft, ChevronRight,
+  ClipboardCheck, FileCheck, LogOut, Menu, Send, Shield, ShieldAlert, X
+} from 'lucide-react';
+import { api } from '../services/api';
 
-export default function Navbar({ user, role, onLogout, activeTab, setActiveTab }) {
+const studentItems = [
+  { id: 'academic', label: 'Academic Dashboard & AI Risk', icon: BarChart3 },
+  { id: 'od', label: 'Apply OD', icon: Send, countKey: 'od' },
+  { id: 'leave', label: 'Apply Leave', icon: Calendar, countKey: 'leave' },
+  { id: 'updates', label: 'Class Updates & Notes', icon: BookOpen, countKey: 'updates' },
+  { id: 'activities', label: 'Extracurricular Activities', icon: Award, countKey: 'activities' },
+  { id: 'bonafide', label: 'Bonafide Certificate', icon: FileCheck }
+];
+
+const facultyItems = [
+  { id: 'watchlist', label: 'Student Risk Watchlist', icon: ShieldAlert },
+  { id: 'applications', label: 'OD & Leave Management', icon: Activity, countKey: 'applications' },
+  { id: 'class_updates', label: 'General Class Updates', icon: BookOpen, countKey: 'updates' },
+  { id: 'extracurricular', label: 'Extracurricular Verification', icon: Award, countKey: 'extracurricular' },
+  { id: 'attendance', label: 'Attendance', icon: ClipboardCheck }
+];
+
+export default function Navbar({ user, role, onLogout, activeTab, setActiveTab, collapsed, setCollapsed }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [counts, setCounts] = useState({});
+  const items = role === 'faculty' ? facultyItems : studentItems;
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadCounts = async () => {
+      try {
+        if (role === 'student') {
+          const [applications, updates, activities] = await Promise.all([
+            api.getStudentApplications(user.reg_number),
+            api.getClassUpdates(),
+            api.getStudentActivities(user.reg_number)
+          ]);
+          if (!cancelled) {
+            setCounts({
+              od: applications.od_applications?.length || 0,
+              leave: applications.leave_applications?.length || 0,
+              updates: updates.class_updates?.length || 0,
+              activities: activities.activities?.length || 0
+            });
+          }
+        } else {
+          const [applications, updates, activities] = await Promise.all([
+            api.getAllApplications(),
+            api.getClassUpdates(),
+            api.getFacultyExtracurricularList()
+          ]);
+          if (!cancelled) {
+            setCounts({
+              applications: applications.applications?.filter((item) => item.status === 'Pending').length || 0,
+              updates: updates.class_updates?.length || 0,
+              extracurricular: activities.activities?.filter((item) => item.verification_status === 'Pending').length || 0
+            });
+          }
+        }
+      } catch (error) {
+        if (!cancelled) setCounts({});
+      }
+    };
+    loadCounts();
+    return () => { cancelled = true; };
+  }, [role, user]);
+
+  const initials = (user.name || (role === 'faculty' ? 'Faculty' : 'Student'))
+    .split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase();
+
+  const navigate = (id) => {
+    setActiveTab(id);
+    setMobileOpen(false);
+  };
+
   return (
-    <header style={{
-      borderBottom: '1px solid var(--border-color)',
-      background: 'rgba(255, 255, 255, 0.95)',
-      backdropFilter: 'blur(12px)',
-      position: 'sticky',
-      top: 0,
-      zIndex: 100
-    }}>
-      <div style={{
-        maxWidth: '1400px',
-        margin: '0 auto',
-        padding: '14px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        {/* Logo & Title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-          <div style={{
-            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-            padding: '10px',
-            borderRadius: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 0 20px rgba(59, 130, 246, 0.4)'
-          }}>
-            <Shield size={24} color="#ffffff" />
+    <>
+      <button className="mobile-sidebar-toggle" onClick={() => setMobileOpen(true)} aria-label="Open navigation">
+        <Menu size={20} />
+      </button>
+      {mobileOpen && <button className="sidebar-scrim" onClick={() => setMobileOpen(false)} aria-label="Close navigation" />}
+      <aside className={`app-sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
+        <div className="sidebar-brand">
+          <div className="sidebar-brand-mark"><Shield size={21} /></div>
+          <div className="sidebar-brand-copy">
+            <strong>ARGUS <span>STUDENT 360</span></strong>
+            <small>FUSIONX 1.0 PROTOTYPE</small>
           </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-                ARGUS <span style={{ color: '#38bdf8' }}>STUDENT 360</span>
-              </h1>
-              <span style={{
-                background: 'rgba(56, 189, 248, 0.15)',
-                color: '#38bdf8',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
-                fontSize: '0.65rem',
-                fontWeight: 700,
-                padding: '2px 8px',
-                borderRadius: '999px',
-                letterSpacing: '0.05em'
-              }}>
-                FUSIONX 1.0 PROTOTYPE
-              </span>
-            </div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-              Early Academic Risk Prediction & Intervention System
-            </p>
-          </div>
-        </div>
-
-        {/* User Info & Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {user && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '6px 14px',
-              background: 'var(--bg-secondary)',
-              borderRadius: '999px',
-              border: '1px solid var(--border-color)'
-            }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                background: role === 'faculty' ? 'linear-gradient(135deg, #8b5cf6, #6366f1)' : 'linear-gradient(135deg, #3b82f6, #06b6d4)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 700,
-                fontSize: '0.85rem'
-              }}>
-                {role === 'faculty' ? 'FAC' : (user.reg_number || 'STU')}
-              </div>
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {user.name}
-                </div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  {role === 'faculty' ? `Faculty (${user.faculty_id})` : `Student (${user.reg_number})`}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <button
-            onClick={onLogout}
-            className="btn btn-secondary"
-            style={{ padding: '8px 14px', fontSize: '0.82rem' }}
-            title="Switch User / Logout"
-          >
-            <LogOut size={16} />
-            <span>Switch Role</span>
+          <button className="sidebar-collapse" onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+            {collapsed ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
           </button>
+          <button className="sidebar-mobile-close" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={18} /></button>
         </div>
-      </div>
-    </header>
+
+        <div className="sidebar-section-label">{role === 'faculty' ? 'Faculty workspace' : 'Student workspace'}</div>
+        <nav className="sidebar-nav" aria-label="Portal navigation">
+          {items.map(({ id, label, icon: Icon, countKey }) => (
+            <button key={id} className={`sidebar-nav-item ${activeTab === id ? 'active' : ''}`} onClick={() => navigate(id)} title={collapsed ? label : undefined}>
+              <Icon size={18} />
+              <span className="sidebar-nav-label">{label}</span>
+              {countKey && counts[countKey] > 0 && <span className="sidebar-count">{counts[countKey]}</span>}
+            </button>
+          ))}
+        </nav>
+
+        <div className="sidebar-user">
+          <div className="sidebar-avatar">{initials}</div>
+          <div className="sidebar-user-copy">
+            <strong>{user.name}</strong>
+            <span>{role === 'faculty' ? user.faculty_id : user.reg_number}</span>
+          </div>
+          <button className="sidebar-logout" onClick={onLogout} title="Switch role / logout"><LogOut size={17} /></button>
+        </div>
+      </aside>
+    </>
   );
 }

@@ -18,7 +18,7 @@ def generate_bonafide():
     db = next(get_db())
     try:
         query = text("""
-            SELECT id, reg_number, name, department, course, year, semester, mentor_name
+            SELECT id, reg_number, name, department, course, year, semester, email, phone, mentor_name
             FROM students WHERE UPPER(reg_number) = :reg
         """)
         student = db.execute(query, {'reg': reg_number}).fetchone()
@@ -44,9 +44,14 @@ def generate_bonafide():
             'course': student[4],
             'year': student[5],
             'semester': student[6],
+            'email': student[7] or '',
+            'phone': student[8] or '',
+            'student_address': 'Address not provided in institutional records',
+            'student_city_state_pin': 'City, State, PIN Code not provided',
             'academic_year': '2026 - 2027',
             'purpose': purpose,
-            'institution_name': 'EduShield Institute of Engineering & Technology',
+            'institution_name': 'ARGUS Institute of Engineering & Technology',
+            'institution_address': 'Tech Park Campus, Chennai, Tamil Nadu - 600025',
             'authorized_signatory': 'Principal & Academic Dean',
             'status': 'Generated'
         }

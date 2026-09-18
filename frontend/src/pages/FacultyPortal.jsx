@@ -8,8 +8,7 @@ import {
 import { api } from '../services/api';
 import StudentReportModal from '../components/StudentReportModal';
 
-export default function FacultyPortal({ faculty }) {
-  const [activeTab, setActiveTab] = useState('watchlist'); // 'watchlist', 'applications', 'class_updates', 'extracurricular'
+export default function FacultyPortal({ faculty, activeTab, setActiveTab }) {
   const [stats, setStats] = useState(null);
   const [watchlist, setWatchlist] = useState([]);
   const [applications, setApplications] = useState([]);
@@ -296,58 +295,6 @@ export default function FacultyPortal({ faculty }) {
 
           </div>
         )}
-      </div>
-
-      {/* Navigation Sub-Tabs */}
-      <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '8px',
-        padding: '6px',
-        background: 'var(--bg-secondary)',
-        borderRadius: 'var(--radius-lg)',
-        marginBottom: '24px',
-        border: '1px solid var(--border-color)'
-      }}>
-        <button
-          onClick={() => setActiveTab('watchlist')}
-          className={`tab-btn ${activeTab === 'watchlist' ? 'active' : ''}`}
-        >
-          <ShieldAlert size={17} />
-          <span>Student Risk Watchlist ({watchlist.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('applications')}
-          className={`tab-btn ${activeTab === 'applications' ? 'active' : ''}`}
-        >
-          <Clock size={17} />
-          <span>OD & Leave Management ({pendingApps.length} Pending)</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('class_updates')}
-          className={`tab-btn ${activeTab === 'class_updates' ? 'active' : ''}`}
-        >
-          <BookOpen size={17} />
-          <span>General Class Updates ({classUpdates.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('extracurricular')}
-          className={`tab-btn ${activeTab === 'extracurricular' ? 'active' : ''}`}
-        >
-          <Award size={17} />
-          <span>Extracurricular Verification ({extracurricularList.filter(e => e.verification_status === 'Pending').length} Pending)</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('attendance')}
-          className={`tab-btn ${activeTab === 'attendance' ? 'active' : ''}`}
-        >
-          <ClipboardCheck size={17} />
-          <span>Attendance</span>
-        </button>
       </div>
 
       {/* TAB CONTENT 1: RANKED STUDENT RISK WATCHLIST */}

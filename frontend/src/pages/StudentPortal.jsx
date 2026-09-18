@@ -7,8 +7,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 
-export default function StudentPortal({ student, onRefresh }) {
-  const [activeTab, setActiveTab] = useState('academic'); // 'academic', 'od', 'leave', 'updates', 'activities', 'bonafide'
+export default function StudentPortal({ student, onRefresh, activeTab, setActiveTab }) {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -308,66 +307,6 @@ export default function StudentPortal({ student, onRefresh }) {
             {risk.risk_level}
           </div>
         </div>
-      </div>
-
-      {/* Navigation Sub-Tabs */}
-      <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '8px',
-        padding: '6px',
-        background: 'var(--bg-secondary)',
-        borderRadius: 'var(--radius-lg)',
-        marginBottom: '24px',
-        border: '1px solid var(--border-color)'
-      }}>
-        <button
-          onClick={() => setActiveTab('academic')}
-          className={`tab-btn ${activeTab === 'academic' ? 'active' : ''}`}
-        >
-          <BarChart3 size={17} />
-          <span>Academic Dashboard & AI Risk</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('od')}
-          className={`tab-btn ${activeTab === 'od' ? 'active' : ''}`}
-        >
-          <Send size={17} />
-          <span>Apply OD ({applications.od_applications.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('leave')}
-          className={`tab-btn ${activeTab === 'leave' ? 'active' : ''}`}
-        >
-          <Calendar size={17} />
-          <span>Apply Leave ({applications.leave_applications.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('updates')}
-          className={`tab-btn ${activeTab === 'updates' ? 'active' : ''}`}
-        >
-          <BookOpen size={17} />
-          <span>Class Updates & Notes ({classUpdates.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('activities')}
-          className={`tab-btn ${activeTab === 'activities' ? 'active' : ''}`}
-        >
-          <Award size={17} />
-          <span>Extracurricular Activities ({activitiesList.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('bonafide')}
-          className={`tab-btn ${activeTab === 'bonafide' ? 'active' : ''}`}
-        >
-          <FileCheck size={17} />
-          <span>Bonafide Certificate</span>
-        </button>
       </div>
 
       {/* TAB CONTENT 1: ACADEMIC DASHBOARD & AI RISK */}
@@ -1297,66 +1236,80 @@ export default function StudentPortal({ student, onRefresh }) {
             </button>
           </div>
 
-          {/* Generated Printable Bonafide Certificate Preview */}
+          {/* Generated Printable Bonafide Request Letter Preview */}
           {generatedBonafide && (
             <div style={{
               background: '#ffffff',
               color: '#0f172a',
-              borderRadius: '8px',
-              padding: '40px 48px',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
-              border: '6px double #1e293b',
+              padding: '52px 58px',
+              boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)',
+              border: '1px solid #cbd5e1',
               marginTop: '28px',
-              position: 'relative'
-            }}>
-              {/* Institution Header */}
-              <div style={{ textAlign: 'center', borderBottom: '2px solid #0f172a', paddingBottom: '16px', marginBottom: '24px' }}>
-                <h2 style={{ fontSize: '1.4rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1e3a8a' }}>
-                  ARGUS Institute of Engineering & Technology
-                </h2>
-                <p style={{ fontSize: '0.8rem', color: '#475569' }}>
-                  (Approved by AICTE, Affiliated to State Technological University)
-                </p>
-                <p style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                  Tech Park Campus, Chennai, Tamil Nadu — 600025
-                </p>
+              position: 'relative',
+              fontFamily: 'Georgia, "Times New Roman", serif',
+              lineHeight: '1.65'
+            }} className="bonafide-request-letter">
+              <h3 style={{ textAlign: 'center', fontSize: '1.3rem', fontWeight: 800, textDecoration: 'underline', margin: '0 0 34px' }}>
+                Bonafide Certificate Request Letter for Scholarship
+              </h3>
+
+              <div style={{ marginBottom: '26px', fontSize: '0.92rem' }}>
+                <div><strong>{generatedBonafide.student_name}</strong></div>
+                <div>{generatedBonafide.student_address}</div>
+                <div>{generatedBonafide.student_city_state_pin}</div>
+                <div>Email: {generatedBonafide.email || 'Not provided in institutional records'}</div>
+                <div>Phone: {generatedBonafide.phone || 'Not provided in institutional records'}</div>
+                <div style={{ marginTop: '12px' }}>Date: {generatedBonafide.issue_date}</div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '24px', fontWeight: 600 }}>
-                <span>Ref: <strong>{generatedBonafide.certificate_number}</strong></span>
-                <span>Date: <strong>{generatedBonafide.issue_date}</strong></span>
+              <div style={{ marginBottom: '26px', fontSize: '0.92rem' }}>
+                <div><strong>Scholarship Committee</strong></div>
+                <div>Scholarship Organization / Institution Name</div>
+                <div>Address</div>
+                <div>City, State, PIN Code</div>
               </div>
 
-              <div style={{ textAlign: 'center', margin: '20px 0' }}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, textDecoration: 'underline', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  BONAFIDE CERTIFICATE
-                </h3>
-              </div>
+              <p style={{ marginBottom: '18px' }}>Dear Members of the Scholarship Committee,</p>
 
-              {/* Certificate Body */}
-              <p style={{ fontSize: '1rem', lineHeight: '2.0', textAlign: 'justify', marginBottom: '32px' }}>
-                This is to certify that <strong>{generatedBonafide.student_name}</strong> (Registration No: <strong>{generatedBonafide.reg_number}</strong>) is a bonafide student of this institution, currently studying in <strong>Year {generatedBonafide.year} (Semester {generatedBonafide.semester})</strong> of the <strong>{generatedBonafide.course} ({generatedBonafide.department})</strong> program during the academic year <strong>{generatedBonafide.academic_year}</strong>.
+              <p style={{ marginBottom: '18px' }}><strong>Subject: Request for Bonafide Certificate</strong></p>
+
+              <p style={{ textAlign: 'justify', marginBottom: '18px' }}>
+                I am writing to request a bonafide certificate from {generatedBonafide.institution_name} in support of my scholarship application. I am currently pursuing the <strong>{generatedBonafide.course}</strong> program in the <strong>{generatedBonafide.department}</strong> department, Year {generatedBonafide.year}, Semester {generatedBonafide.semester}, during the academic year {generatedBonafide.academic_year}. The certificate is required to verify my student status for {generatedBonafide.purpose}.
               </p>
 
-              <p style={{ fontSize: '1rem', lineHeight: '2.0', textAlign: 'justify', marginBottom: '40px' }}>
-                This certificate is issued on the student's request for the specific purpose of <strong>{generatedBonafide.purpose}</strong>.
+              <p style={{ textAlign: 'justify', marginBottom: '18px' }}>
+                I kindly request the institution to issue the bonafide certificate containing the required educational details, along with the official institute stamp and seal, so that I may submit it with my scholarship documentation.
               </p>
 
-              {/* Signature Block */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '60px', paddingTop: '20px' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>Seal of the Institution</div>
-                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px dashed #94a3b8', margin: '8px auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#94a3b8' }}>
-                    OFFICIAL SEAL
-                  </div>
-                </div>
+              <p style={{ textAlign: 'justify', marginBottom: '18px' }}>
+                Please contact me at {generatedBonafide.phone || 'the phone number on my student record'} or {generatedBonafide.email || 'the email address on my student record'} if any additional information is required.
+              </p>
 
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontFamily: 'cursive', fontSize: '1.1rem', color: '#1e3a8a', marginBottom: '4px' }}>
-                    Dr. S. K. Narayanan
+              <p style={{ marginBottom: '42px' }}>
+                Thank you for your consideration and support in my pursuit of higher education.
+              </p>
+
+              <div style={{ lineHeight: '1.5' }}>
+                <div>Sincerely,</div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, minmax(130px, 1fr))',
+                  gap: '28px',
+                  alignItems: 'end',
+                  marginTop: '54px'
+                }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ borderTop: '1px solid #475569', paddingTop: '6px', fontWeight: 700 }}>Student Signature</div>
+                    <div style={{ marginTop: '4px', fontSize: '0.88rem' }}>{generatedBonafide.student_name}</div>
                   </div>
-                  <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0f172a' }}>Principal & Academic Dean</div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>ARGUS Institute of Technology</div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ borderTop: '1px solid #475569', paddingTop: '6px', fontWeight: 700 }}>Tutor Signature</div>
+                    <div style={{ marginTop: '4px', fontSize: '0.88rem' }}>Tutor</div>
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ borderTop: '1px solid #475569', paddingTop: '6px', fontWeight: 700 }}>HOD Signature</div>
+                    <div style={{ marginTop: '4px', fontSize: '0.88rem' }}>Head of Department</div>
+                  </div>
                 </div>
               </div>
 
@@ -1364,7 +1317,7 @@ export default function StudentPortal({ student, onRefresh }) {
               <div style={{ marginTop: '30px', textAlign: 'center' }}>
                 <button
                   onClick={() => window.print()}
-                  className="btn btn-primary"
+                  className="btn btn-primary bonafide-print-control"
                   style={{ padding: '10px 24px' }}
                 >
                   <Download size={16} />
