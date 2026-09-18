@@ -269,14 +269,17 @@ def faculty_action():
     action = data.get('action')  # 'Approved' or 'Rejected'
     remarks = data.get('remarks', '')
 
-    if not (app_type and app_id and action in ['Approved', 'Rejected']):
+    if app_type not in ['OD', 'Leave'] or not app_id or action not in ['Approved', 'Rejected']:
         return jsonify({'success': False, 'message': 'Invalid application type or action.'}), 400
 
     db = next(get_db())
     try:
         table = "od_applications" if app_type == 'OD' else "leave_applications"
         update_query = text(f"UPDATE {table} SET status = :status, faculty_remarks = :remarks WHERE id = :id")
-        db.execute(update_query, {'status': action, 'remarks': remarks, 'id': app_id})
+        result = db.execute(update_query, {'status': action, 'remarks': remarks, 'id': app_id})
+        if result.rowcount != 1:
+            db.rollback()
+            return jsonify({'success': False, 'message': f'{app_type} application was not found.'}), 404
         db.commit()
 
         return jsonify({'success': True, 'message': f'{app_type} application has been {action}.'})

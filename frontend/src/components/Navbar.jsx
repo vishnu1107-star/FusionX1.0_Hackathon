@@ -35,7 +35,7 @@ export default function Navbar({ user, role, onLogout, activeTab, setActiveTab }
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-                EduShield <span style={{ color: '#38bdf8' }}>AI</span>
+                ARGUS <span style={{ color: '#38bdf8' }}>STUDENT 360</span>
               </h1>
               <span style={{
                 background: 'rgba(56, 189, 248, 0.15)',

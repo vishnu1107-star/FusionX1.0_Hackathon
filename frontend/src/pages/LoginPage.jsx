@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, User, Award, BookOpen, AlertTriangle, CheckCircle, ArrowRight, Sparkles, Building } from 'lucide-react';
+import { Shield, User, Award, BookOpen, AlertTriangle, CheckCircle, ArrowRight, Building } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function LoginPage({ onLoginSuccess }) {
@@ -47,23 +47,6 @@ export default function LoginPage({ onLoginSuccess }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickStudentLogin = (reg) => {
-    setRegNumber(reg);
-    setLoading(true);
-    setErrorMsg('');
-    api.studentLogin(reg).then(res => {
-      if (res.success) {
-        onLoginSuccess('student', res.student);
-      } else {
-        setErrorMsg(res.message);
-      }
-    }).catch(() => {
-      setErrorMsg('Network error.');
-    }).finally(() => {
-      setLoading(false);
-    });
   };
 
   return (
@@ -123,7 +106,7 @@ export default function LoginPage({ onLoginSuccess }) {
             <Shield size={34} color="#fff" />
           </div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.9rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            EduShield <span style={{ color: 'var(--accent-blue)' }}>AI</span>
+            ARGUS <span style={{ color: 'var(--accent-blue)' }}>STUDENT 360</span>
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '6px' }}>
             AI-Based Academic Risk Prediction & Personalized Intervention System
@@ -192,7 +175,7 @@ export default function LoginPage({ onLoginSuccess }) {
                   id="regNumberInput"
                   type="text"
                   className="form-input"
-                  placeholder="e.g. 23IT001, 23IT002, 23IT003"
+                  placeholder="Enter your registration number"
                   value={regNumber}
                   onChange={(e) => setRegNumber(e.target.value)}
                   autoFocus
@@ -213,95 +196,6 @@ export default function LoginPage({ onLoginSuccess }) {
               </button>
             </form>
 
-            {/* Quick Demo Personas Selector for Hackathon Jury */}
-            <div style={{ marginTop: '28px', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-                <Sparkles size={16} color="#38bdf8" />
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  1-Click Hackathon Demo Personas
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button
-                  type="button"
-                  onClick={() => handleQuickStudentLogin('23IT002')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 14px',
-                    background: 'rgba(239, 68, 68, 0.05)',
-                    border: '1px solid rgba(239, 68, 68, 0.2)',
-                    borderRadius: 'var(--radius-md)',
-                    color: 'var(--text-primary)',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.6)'}
-                  onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)'}
-                >
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>23IT002 — Rahul Sharma</div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Attendance: 58% | Tests: 42% | 5 Late Submissions</div>
-                  </div>
-                  <span className="risk-badge risk-badge-high">HIGH RISK</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickStudentLogin('23IT001')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 14px',
-                    background: 'rgba(245, 158, 11, 0.05)',
-                    border: '1px solid rgba(245, 158, 11, 0.2)',
-                    borderRadius: 'var(--radius-md)',
-                    color: 'var(--text-primary)',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.6)'}
-                  onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.3)'}
-                >
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>23IT001 — Ananya Mishra</div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Attendance: 72% | Tests: 64% | 2 Late Submissions</div>
-                  </div>
-                  <span className="risk-badge risk-badge-medium">MEDIUM RISK</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickStudentLogin('23IT003')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 14px',
-                    background: 'rgba(16, 185, 129, 0.05)',
-                    border: '1px solid rgba(16, 185, 129, 0.2)',
-                    borderRadius: 'var(--radius-md)',
-                    color: 'var(--text-primary)',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.6)'}
-                  onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.3)'}
-                >
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>23IT003 — Karthik Ram</div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Attendance: 91.5% | Tests: 84.5% | 0 Delays</div>
-                  </div>
-                  <span className="risk-badge risk-badge-low">LOW RISK</span>
-                </button>
-              </div>
-            </div>
           </div>
         ) : (
           /* Faculty Login Form */

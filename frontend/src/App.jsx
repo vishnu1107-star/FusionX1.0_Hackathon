@@ -74,7 +74,7 @@ function App() {
         color: 'var(--text-muted)',
         background: 'rgba(11, 15, 25, 0.95)'
       }}>
-        EduShield AI • AI-Based Academic Risk Prediction & Personalized Intervention System • FUSIONX 1.0 Hackathon Prototype
+        ARGUS STUDENT 360 • AI-Based Academic Risk Prediction & Personalized Intervention System • FUSIONX 1.0 Hackathon Prototype
       </footer>
     </div>
   );

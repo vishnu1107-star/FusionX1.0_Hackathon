@@ -1312,7 +1312,7 @@ export default function StudentPortal({ student, onRefresh }) {
               {/* Institution Header */}
               <div style={{ textAlign: 'center', borderBottom: '2px solid #0f172a', paddingBottom: '16px', marginBottom: '24px' }}>
                 <h2 style={{ fontSize: '1.4rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1e3a8a' }}>
-                  EduShield Institute of Engineering & Technology
+                  ARGUS Institute of Engineering & Technology
                 </h2>
                 <p style={{ fontSize: '0.8rem', color: '#475569' }}>
                   (Approved by AICTE, Affiliated to State Technological University)
@@ -1356,7 +1356,7 @@ export default function StudentPortal({ student, onRefresh }) {
                     Dr. S. K. Narayanan
                   </div>
                   <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0f172a' }}>Principal & Academic Dean</div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>EduShield Institute of Technology</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>ARGUS Institute of Technology</div>
                 </div>
               </div>
 
