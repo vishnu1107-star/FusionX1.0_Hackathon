@@ -6,12 +6,12 @@ INSERT INTO faculty (faculty_id, name, department, email) VALUES
 ('FAC002', 'Prof. Priya Venkatesh', 'Computer Science & Engineering', 'priya.cse@edushield.edu');
 
 -- Insert Students (3 Primary Personas + additional class peers)
-INSERT INTO students (id, reg_number, name, department, course, year, semester, email, phone, mentor_name) VALUES
-(1, '23IT002', 'Rahul Sharma', 'Information Technology', 'B.Tech IT', 3, 5, 'rahul.23it002@edushield.edu', '+91 98765 43210', 'Dr. Arvind Swaminathan'),
-(2, '23IT001', 'Ananya Mishra', 'Information Technology', 'B.Tech IT', 3, 5, 'ananya.23it001@edushield.edu', '+91 98765 43211', 'Dr. Arvind Swaminathan'),
-(3, '23IT003', 'Karthik Ram', 'Information Technology', 'B.Tech IT', 3, 5, 'karthik.23it003@edushield.edu', '+91 98765 43212', 'Dr. Arvind Swaminathan'),
-(4, '23IT004', 'Deepak Verma', 'Information Technology', 'B.Tech IT', 3, 5, 'deepak.23it004@edushield.edu', '+91 98765 43213', 'Dr. Arvind Swaminathan'),
-(5, '23IT005', 'Sneha Patel', 'Information Technology', 'B.Tech IT', 3, 5, 'sneha.23it005@edushield.edu', '+91 98765 43214', 'Dr. Arvind Swaminathan');
+INSERT INTO students (id, reg_number, name, department, course, year, semester, section, email, phone, mentor_name) VALUES
+(1, '23IT002', 'Rahul Sharma', 'Information Technology', 'B.Tech IT', 3, 5, 'A', 'rahul.23it002@edushield.edu', '+91 98765 43210', 'Dr. Arvind Swaminathan'),
+(2, '23IT001', 'Ananya Mishra', 'Information Technology', 'B.Tech IT', 3, 5, 'A', 'ananya.23it001@edushield.edu', '+91 98765 43211', 'Dr. Arvind Swaminathan'),
+(3, '23IT003', 'Karthik Ram', 'Information Technology', 'B.Tech IT', 3, 5, 'A', 'karthik.23it003@edushield.edu', '+91 98765 43212', 'Dr. Arvind Swaminathan'),
+(4, '23IT004', 'Deepak Verma', 'Information Technology', 'B.Tech IT', 3, 5, 'A', 'deepak.23it004@edushield.edu', '+91 98765 43213', 'Dr. Arvind Swaminathan'),
+(5, '23IT005', 'Sneha Patel', 'Information Technology', 'B.Tech IT', 3, 5, 'A', 'sneha.23it005@edushield.edu', '+91 98765 43214', 'Dr. Arvind Swaminathan');
 
 -- Academic Records Summary
 INSERT INTO academic_records (student_id, attendance_pct, avg_test_score, avg_assignment_score, submission_delays, performance_trend, math_score, dbms_score, os_score, dsa_score) VALUES
@@ -91,3 +91,16 @@ INSERT INTO extracurricular_activities (student_id, activity_type, event_name, a
 INSERT INTO bonafide_requests (student_id, purpose, status, certificate_number, generated_at) VALUES
 (3, 'Passport Application & Police Verification', 'Generated', 'ES-BONA-2026-0891', '2026-09-05 11:30:00'),
 (2, 'Education Bank Loan Application (SBI)', 'Generated', 'ES-BONA-2026-0742', '2026-08-18 14:15:00');
+
+-- Mock Attendance Records
+INSERT INTO attendance_records (student_id, faculty_id, subject, attendance_date, period, status) VALUES
+(1, 1, 'Database Management Systems', '2026-09-17', 1, 'Absent'),
+(2, 1, 'Database Management Systems', '2026-09-17', 1, 'Present'),
+(3, 1, 'Database Management Systems', '2026-09-17', 1, 'Present'),
+(4, 1, 'Database Management Systems', '2026-09-17', 1, 'Absent'),
+(5, 1, 'Database Management Systems', '2026-09-17', 1, 'Present'),
+(1, 1, 'Database Management Systems', '2026-09-18', 2, 'Present'),
+(2, 1, 'Database Management Systems', '2026-09-18', 2, 'Present'),
+(3, 1, 'Database Management Systems', '2026-09-18', 2, 'Present'),
+(4, 1, 'Database Management Systems', '2026-09-18', 2, 'Absent'),
+(5, 1, 'Database Management Systems', '2026-09-18', 2, 'Present');

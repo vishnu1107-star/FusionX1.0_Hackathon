@@ -12,6 +12,7 @@ from routes.application_routes import app_bp
 from routes.class_updates_routes import class_updates_bp
 from routes.extracurricular_routes import extracurricular_bp
 from routes.bonafide_routes import bonafide_bp
+from routes.attendance_routes import attendance_bp
 
 def create_app():
     app = Flask(__name__)
@@ -28,6 +29,7 @@ def create_app():
     app.register_blueprint(class_updates_bp, url_prefix='/api/class-updates')
     app.register_blueprint(extracurricular_bp, url_prefix='/api/extracurricular')
     app.register_blueprint(bonafide_bp, url_prefix='/api/bonafide')
+    app.register_blueprint(attendance_bp, url_prefix='/api/attendance')
 
     # Serve uploaded documents/proofs
     @app.route('/uploads/<path:filename>')

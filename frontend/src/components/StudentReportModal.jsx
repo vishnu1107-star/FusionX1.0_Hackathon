@@ -15,8 +15,8 @@ export default function StudentReportModal({ student, onClose }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border-color)', paddingBottom: '18px', marginBottom: '20px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff' }}>{student.name}</h2>
-              <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '2px 10px', borderRadius: '6px', fontWeight: 700, fontSize: '0.85rem' }}>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>{student.name}</h2>
+              <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: 'var(--accent-blue)', padding: '2px 10px', borderRadius: '6px', fontWeight: 700, fontSize: '0.85rem' }}>
                 {student.reg_number}
               </span>
             </div>
@@ -37,28 +37,28 @@ export default function StudentReportModal({ student, onClose }) {
 
         {/* Academic Diagnostics Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
-          <div style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          <div style={{ padding: '12px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Attendance</div>
             <div style={{ fontSize: '1.25rem', fontWeight: 700, color: student.attendance_pct < 75 ? '#f87171' : '#34d399' }}>
               {student.attendance_pct}%
             </div>
           </div>
 
-          <div style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          <div style={{ padding: '12px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Avg Test Score</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#38bdf8' }}>
+            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--accent-blue)' }}>
               {student.avg_test_score}%
             </div>
           </div>
 
-          <div style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          <div style={{ padding: '12px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Assignment Delays</div>
             <div style={{ fontSize: '1.25rem', fontWeight: 700, color: student.submission_delays > 0 ? '#f87171' : '#34d399' }}>
               {student.submission_delays} late
             </div>
           </div>
 
-          <div style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          <div style={{ padding: '12px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Performance Trend</div>
             <div style={{ fontSize: '1.1rem', fontWeight: 700, color: student.performance_trend === 'Improving' ? '#34d399' : student.performance_trend === 'Declining' ? '#f87171' : '#fcd34d' }}>
               {student.performance_trend}
@@ -76,7 +76,7 @@ export default function StudentReportModal({ student, onClose }) {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
             <ShieldAlert size={18} color={isHighRisk ? '#ef4444' : isMedRisk ? '#f59e0b' : '#10b981'} />
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff' }}>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
               AI Model Risk Diagnostic Reasons:
             </h4>
           </div>
@@ -94,7 +94,7 @@ export default function StudentReportModal({ student, onClose }) {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
             <Award size={18} color="#8b5cf6" />
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff' }}>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
               Personalized Intervention & Remedial Roadmap:
             </h4>
           </div>
@@ -104,7 +104,7 @@ export default function StudentReportModal({ student, onClose }) {
               <div key={idx} style={{
                 padding: '12px 16px',
                 borderRadius: '8px',
-                background: 'rgba(255, 255, 255, 0.03)',
+                background: 'var(--bg-secondary)',
                 border: '1px solid var(--border-color)'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
@@ -113,7 +113,7 @@ export default function StudentReportModal({ student, onClose }) {
                   </span>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.action_type}</span>
                 </div>
-                <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#fff' }}>{item.title}</div>
+                <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>{item.title}</div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{item.recommendation}</div>
               </div>
             ))}

@@ -133,5 +133,30 @@ export const api = {
       body: JSON.stringify({ reg_number: regNumber, purpose })
     });
     return res.json();
+  },
+
+  // Attendance Module
+  getAttendanceOptions: async () => {
+    const res = await fetch(`${BASE_URL}/attendance/options`);
+    return res.json();
+  },
+
+  getAttendanceStudents: async (department, year, section) => {
+    const res = await fetch(`${BASE_URL}/attendance/students?department=${encodeURIComponent(department)}&year=${year}&section=${encodeURIComponent(section)}`);
+    return res.json();
+  },
+
+  submitAttendance: async (payload) => {
+    const res = await fetch(`${BASE_URL}/attendance/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return res.json();
+  },
+
+  getAttendanceReview: async () => {
+    const res = await fetch(`${BASE_URL}/attendance/review`);
+    return res.json();
   }
 };

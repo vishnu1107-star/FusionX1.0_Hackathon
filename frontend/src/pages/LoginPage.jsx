@@ -105,7 +105,7 @@ export default function LoginPage({ onLoginSuccess }) {
         padding: '36px',
         position: 'relative',
         zIndex: 10,
-        boxShadow: '0 20px 50px rgba(0,0,0,0.6)'
+        boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
       }}>
         {/* Header Branding */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
@@ -122,8 +122,8 @@ export default function LoginPage({ onLoginSuccess }) {
           }}>
             <Shield size={34} color="#fff" />
           </div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.9rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
-            EduShield <span style={{ color: '#38bdf8' }}>AI</span>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.9rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            EduShield <span style={{ color: 'var(--accent-blue)' }}>AI</span>
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '6px' }}>
             AI-Based Academic Risk Prediction & Personalized Intervention System
@@ -136,7 +136,7 @@ export default function LoginPage({ onLoginSuccess }) {
           gridTemplateColumns: '1fr 1fr',
           gap: '8px',
           padding: '6px',
-          background: 'rgba(15, 23, 42, 0.6)',
+          background: 'var(--bg-secondary)',
           borderRadius: 'var(--radius-md)',
           marginBottom: '24px',
           border: '1px solid var(--border-color)'
@@ -168,7 +168,7 @@ export default function LoginPage({ onLoginSuccess }) {
             background: 'rgba(239, 68, 68, 0.15)',
             border: '1px solid rgba(239, 68, 68, 0.4)',
             borderRadius: 'var(--radius-md)',
-            color: '#fca5a5',
+            color: 'var(--risk-high-text)',
             fontSize: '0.85rem',
             marginBottom: '20px',
             display: 'flex',
@@ -231,10 +231,10 @@ export default function LoginPage({ onLoginSuccess }) {
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '10px 14px',
-                    background: 'rgba(239, 68, 68, 0.08)',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    background: 'rgba(239, 68, 68, 0.05)',
+                    border: '1px solid rgba(239, 68, 68, 0.2)',
                     borderRadius: 'var(--radius-md)',
-                    color: '#fff',
+                    color: 'var(--text-primary)',
                     cursor: 'pointer',
                     textAlign: 'left',
                     transition: 'all 0.2s ease'
@@ -257,10 +257,10 @@ export default function LoginPage({ onLoginSuccess }) {
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '10px 14px',
-                    background: 'rgba(245, 158, 11, 0.08)',
-                    border: '1px solid rgba(245, 158, 11, 0.3)',
+                    background: 'rgba(245, 158, 11, 0.05)',
+                    border: '1px solid rgba(245, 158, 11, 0.2)',
                     borderRadius: 'var(--radius-md)',
-                    color: '#fff',
+                    color: 'var(--text-primary)',
                     cursor: 'pointer',
                     textAlign: 'left',
                     transition: 'all 0.2s ease'
@@ -283,10 +283,10 @@ export default function LoginPage({ onLoginSuccess }) {
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '10px 14px',
-                    background: 'rgba(16, 185, 129, 0.08)',
-                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    background: 'rgba(16, 185, 129, 0.05)',
+                    border: '1px solid rgba(16, 185, 129, 0.2)',
                     borderRadius: 'var(--radius-md)',
-                    color: '#fff',
+                    color: 'var(--text-primary)',
                     cursor: 'pointer',
                     textAlign: 'left',
                     transition: 'all 0.2s ease'
@@ -336,7 +336,7 @@ export default function LoginPage({ onLoginSuccess }) {
             </form>
 
             <div style={{ marginTop: '24px', padding: '14px', background: 'rgba(139, 92, 246, 0.1)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(139, 92, 246, 0.2)' }}>
-              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#c4b5fd', marginBottom: '4px' }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--accent-purple)', marginBottom: '4px' }}>
                 Faculty Authority Capabilities:
               </div>
               <ul style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', paddingLeft: '18px', lineHeight: '1.6' }}>

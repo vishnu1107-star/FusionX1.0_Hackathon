@@ -3,7 +3,7 @@ import {
   Users, AlertTriangle, CheckCircle, Clock, BookOpen, Send, 
   Calendar, FileText, Award, Eye, ThumbsUp, ThumbsDown, 
   RefreshCw, ShieldAlert, PlusCircle, ExternalLink, Check, X,
-  FileCheck, Sparkles, Filter, ChevronRight
+  FileCheck, Sparkles, Filter, ChevronRight, ClipboardCheck
 } from 'lucide-react';
 import { api } from '../services/api';
 import StudentReportModal from '../components/StudentReportModal';
@@ -17,6 +17,14 @@ export default function FacultyPortal({ faculty }) {
   const [extracurricularList, setExtracurricularList] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Attendance Module
+  const [attendanceOptions, setAttendanceOptions] = useState({ departments: [], years: [], sections: [], subjects: [] });
+  const [attForm, setAttForm] = useState({ department: '', year: '', section: '', subject: '', date: new Date().toISOString().split('T')[0], period: '1' });
+  const [attStudents, setAttStudents] = useState([]);
+  const [attReview, setAttReview] = useState(null);
+  const [attendanceSubTab, setAttendanceSubTab] = useState('mark');
+  const [savingAtt, setSavingAtt] = useState(false);
 
   // New Class Update Form
   const [updateForm, setUpdateForm] = useState({
@@ -32,12 +40,13 @@ export default function FacultyPortal({ faculty }) {
   const loadFacultyData = async () => {
     setLoading(true);
     try {
-      const [statsRes, watchRes, appRes, updatesRes, extraRes] = await Promise.all([
+      const [statsRes, watchRes, appRes, updatesRes, extraRes, attOptRes] = await Promise.all([
         api.getFacultyStats(),
         api.getRiskWatchlist(),
         api.getAllApplications(),
         api.getClassUpdates(),
-        api.getFacultyExtracurricularList()
+        api.getFacultyExtracurricularList(),
+        api.getAttendanceOptions().catch(() => null)
       ]);
 
       if (statsRes.success) setStats(statsRes.stats);
@@ -45,6 +54,16 @@ export default function FacultyPortal({ faculty }) {
       if (appRes.success) setApplications(appRes.applications);
       if (updatesRes.success) setClassUpdates(updatesRes.class_updates);
       if (extraRes.success) setExtracurricularList(extraRes.activities);
+      if (attOptRes && attOptRes.status === 'success') {
+        setAttendanceOptions(attOptRes.data);
+        setAttForm(prev => ({
+          ...prev,
+          department: attOptRes.data.departments[0] || '',
+          year: attOptRes.data.years[0] || '',
+          section: attOptRes.data.sections[0] || '',
+          subject: attOptRes.data.subjects[0] || ''
+        }));
+      }
     } catch (err) {
       console.error("Failed to load faculty data", err);
     } finally {
@@ -55,6 +74,67 @@ export default function FacultyPortal({ faculty }) {
   useEffect(() => {
     loadFacultyData();
   }, []);
+
+  // Handle Attendance Fetch
+  const handleFetchStudentsForAttendance = async () => {
+    if(!attForm.department || !attForm.year || !attForm.section) return;
+    try {
+      const res = await api.getAttendanceStudents(attForm.department, attForm.year, attForm.section);
+      if(res.status === 'success') {
+        const studentsWithStatus = res.data.map(s => ({ ...s, status: 'Present' }));
+        setAttStudents(studentsWithStatus);
+      }
+    } catch (err) { alert('Error fetching students'); }
+  };
+
+  const handleAttendanceStatusChange = (index, status) => {
+    const updated = [...attStudents];
+    updated[index].status = status;
+    setAttStudents(updated);
+  };
+
+  const handleMarkAll = (status) => {
+    setAttStudents(attStudents.map(s => ({ ...s, status })));
+  };
+
+  const handleSubmitAttendance = async () => {
+    if(attStudents.length === 0) return;
+    setSavingAtt(true);
+    try {
+      const payload = {
+        faculty_id: faculty.faculty_id,
+        subject: attForm.subject,
+        date: attForm.date,
+        period: parseInt(attForm.period),
+        attendance: attStudents.map(s => ({ student_id: s.id, status: s.status }))
+      };
+      const res = await api.submitAttendance(payload);
+      if(res.status === 'success') {
+        alert('Attendance saved successfully! Risk profiles updated.');
+        setAttStudents([]); // clear form
+        loadFacultyData(); // refresh stats
+      } else {
+        alert(res.message || 'Failed to save attendance');
+      }
+    } catch(err) {
+      alert('Error submitting attendance');
+    } finally {
+      setSavingAtt(false);
+    }
+  };
+
+  const loadAttendanceReview = async () => {
+    try {
+      const res = await api.getAttendanceReview();
+      if(res.status === 'success') setAttReview(res.data);
+    } catch(e) {}
+  };
+
+  useEffect(() => {
+    if(activeTab === 'attendance' && attendanceSubTab === 'review') {
+      loadAttendanceReview();
+    }
+  }, [activeTab, attendanceSubTab]);
 
   // Handle Application Action (Approve / Reject)
   const handleApplicationAction = async (type, id, action) => {
@@ -138,7 +218,7 @@ export default function FacultyPortal({ faculty }) {
     return (
       <div style={{ padding: '80px 20px', textAlign: 'center' }}>
         <RefreshCw size={36} className="spin" color="#8b5cf6" style={{ margin: '0 auto 16px' }} />
-        <h3 style={{ color: '#fff' }}>Loading Faculty Intelligence Dashboard...</h3>
+        <h3 style={{ color: 'var(--text-primary)' }}>Loading Faculty Intelligence Dashboard...</h3>
       </div>
     );
   }
@@ -152,14 +232,14 @@ export default function FacultyPortal({ faculty }) {
       <div className="glass-panel" style={{
         padding: '24px 28px',
         marginBottom: '24px',
-        background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.85) 0%, rgba(30, 41, 59, 0.7) 100%)',
+        background: 'var(--bg-card)',
         borderLeft: '5px solid #8b5cf6'
       }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Users size={22} color="#8b5cf6" />
-              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff' }}>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 Faculty Academic Monitoring & Intervention Portal
               </h2>
             </div>
@@ -178,39 +258,39 @@ export default function FacultyPortal({ faculty }) {
         {stats && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginTop: '20px' }}>
             
-            <div style={{ padding: '14px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+            <div style={{ padding: '14px', background: 'var(--bg-card)', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Students</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff' }}>{stats.total_students}</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)' }}>{stats.total_students}</div>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Enrolled in Dept</div>
             </div>
 
             <div style={{ padding: '14px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '10px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-              <div style={{ fontSize: '0.75rem', color: '#fca5a5' }}>High Risk Students</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ef4444' }}>{stats.high_risk_students}</div>
-              <div style={{ fontSize: '0.7rem', color: '#fca5a5' }}>Immediate Intervention</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--risk-high-text)' }}>High Risk Students</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--risk-high-text)' }}>{stats.high_risk_students}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--risk-high-text)' }}>Immediate Intervention</div>
             </div>
 
             <div style={{ padding: '14px', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '10px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
               <div style={{ fontSize: '0.75rem', color: '#fcd34d' }}>Medium Risk Students</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f59e0b' }}>{stats.medium_risk_students}</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--risk-med-text)' }}>{stats.medium_risk_students}</div>
               <div style={{ fontSize: '0.7rem', color: '#fcd34d' }}>Close Monitoring</div>
             </div>
 
             <div style={{ padding: '14px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '10px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
-              <div style={{ fontSize: '0.75rem', color: '#6ee7b7' }}>Low Risk Students</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#10b981' }}>{stats.low_risk_students}</div>
-              <div style={{ fontSize: '0.7rem', color: '#6ee7b7' }}>Satisfactory Progress</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--risk-low-text)' }}>Low Risk Students</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--risk-low-text)' }}>{stats.low_risk_students}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--risk-low-text)' }}>Satisfactory Progress</div>
             </div>
 
             <div style={{ padding: '14px', background: 'rgba(56, 189, 248, 0.1)', borderRadius: '10px', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
-              <div style={{ fontSize: '0.75rem', color: '#38bdf8' }}>Pending OD Requests</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#38bdf8' }}>{stats.pending_od_applications}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--accent-blue)' }}>Pending OD Requests</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--accent-blue)' }}>{stats.pending_od_applications}</div>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Awaiting Decision</div>
             </div>
 
             <div style={{ padding: '14px', background: 'rgba(139, 92, 246, 0.1)', borderRadius: '10px', border: '1px solid rgba(139, 92, 246, 0.3)' }}>
-              <div style={{ fontSize: '0.75rem', color: '#c084fc' }}>Pending Leave Requests</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#a855f7' }}>{stats.pending_leave_applications}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--accent-purple)' }}>Pending Leave Requests</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--accent-purple)' }}>{stats.pending_leave_applications}</div>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Awaiting Decision</div>
             </div>
 
@@ -224,7 +304,7 @@ export default function FacultyPortal({ faculty }) {
         flexWrap: 'wrap',
         gap: '8px',
         padding: '6px',
-        background: 'rgba(15, 23, 42, 0.7)',
+        background: 'var(--bg-secondary)',
         borderRadius: 'var(--radius-lg)',
         marginBottom: '24px',
         border: '1px solid var(--border-color)'
@@ -260,6 +340,14 @@ export default function FacultyPortal({ faculty }) {
           <Award size={17} />
           <span>Extracurricular Verification ({extracurricularList.filter(e => e.verification_status === 'Pending').length} Pending)</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('attendance')}
+          className={`tab-btn ${activeTab === 'attendance' ? 'active' : ''}`}
+        >
+          <ClipboardCheck size={17} />
+          <span>Attendance</span>
+        </button>
       </div>
 
       {/* TAB CONTENT 1: RANKED STUDENT RISK WATCHLIST */}
@@ -267,7 +355,7 @@ export default function FacultyPortal({ faculty }) {
         <div className="glass-panel" style={{ padding: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
             <div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                 Ranked Academic Risk Watchlist
               </h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -316,8 +404,8 @@ export default function FacultyPortal({ faculty }) {
                             width: '24px',
                             height: '24px',
                             borderRadius: '50%',
-                            background: isHigh ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.06)',
-                            color: isHigh ? '#fca5a5' : '#fff',
+                            background: isHigh ? 'rgba(239, 68, 68, 0.2)' : 'var(--bg-secondary)',
+                            color: isHigh ? 'var(--risk-high-text)' : 'var(--text-primary)',
                             fontSize: '0.75rem',
                             fontWeight: 700,
                             display: 'flex',
@@ -327,20 +415,20 @@ export default function FacultyPortal({ faculty }) {
                             {index + 1}
                           </span>
                           <div>
-                            <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.92rem' }}>{stu.name}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#38bdf8' }}>{stu.reg_number} • {stu.course}</div>
+                            <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.92rem' }}>{stu.name}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--accent-blue)' }}>{stu.reg_number} • {stu.course}</div>
                           </div>
                         </div>
                       </td>
 
                       <td>
-                        <span style={{ fontWeight: 700, color: stu.attendance_pct < 75 ? '#f87171' : '#34d399' }}>
+                        <span style={{ fontWeight: 700, color: stu.attendance_pct < 75 ? 'var(--risk-high-text)' : 'var(--risk-low-text)' }}>
                           {stu.attendance_pct}%
                         </span>
                       </td>
 
                       <td>
-                        <span style={{ fontWeight: 600, color: stu.avg_test_score < 50 ? '#f87171' : '#fff' }}>
+                        <span style={{ fontWeight: 600, color: stu.avg_test_score < 50 ? 'var(--risk-high-text)' : 'var(--text-primary)' }}>
                           {stu.avg_test_score}%
                         </span>
                       </td>
@@ -351,9 +439,9 @@ export default function FacultyPortal({ faculty }) {
 
                       <td>
                         {stu.submission_delays > 0 ? (
-                          <span style={{ color: '#f87171', fontWeight: 600 }}>{stu.submission_delays} late</span>
+                          <span style={{ color: 'var(--risk-high-text)', fontWeight: 600 }}>{stu.submission_delays} late</span>
                         ) : (
-                          <span style={{ color: '#34d399' }}>0</span>
+                          <span style={{ color: 'var(--risk-low-text)' }}>0</span>
                         )}
                       </td>
 
@@ -403,14 +491,14 @@ export default function FacultyPortal({ faculty }) {
         <div className="glass-panel" style={{ padding: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                 OD & Leave Application Management
               </h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
                 Review duty and leave requests. The system presents student academic context (Attendance & Risk), while faculty makes the final Approve / Reject decision.
               </p>
             </div>
-            <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '6px 14px', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 600 }}>
+            <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: 'var(--accent-blue)', padding: '6px 14px', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 600 }}>
               {pendingApps.length} Pending Actions
             </span>
           </div>
@@ -425,7 +513,7 @@ export default function FacultyPortal({ faculty }) {
                   <div key={`${app.application_type}-${app.id}`} style={{
                     padding: '20px',
                     borderRadius: 'var(--radius-md)',
-                    background: 'rgba(15, 23, 42, 0.7)',
+                    background: 'var(--bg-secondary)',
                     border: '1px solid var(--border-color)',
                     display: 'flex',
                     flexDirection: 'column',
@@ -445,7 +533,7 @@ export default function FacultyPortal({ faculty }) {
                           {app.application_type} Application
                         </span>
                         <div>
-                          <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff' }}>
+                          <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                             {app.student_name} ({app.student_reg})
                           </div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -472,12 +560,12 @@ export default function FacultyPortal({ faculty }) {
                     </div>
 
                     {/* Application Details Body */}
-                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div style={{ background: 'var(--bg-card)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', fontSize: '0.82rem', marginBottom: '8px' }}>
-                        <div><strong style={{ color: 'var(--text-muted)' }}>Purpose:</strong> <span style={{ color: '#fff' }}>{app.purpose}</span></div>
-                        <div><strong style={{ color: 'var(--text-muted)' }}>Dates:</strong> <span style={{ color: '#38bdf8' }}>{app.from_date} to {app.to_date}</span></div>
+                        <div><strong style={{ color: 'var(--text-muted)' }}>Purpose:</strong> <span style={{ color: 'var(--text-primary)' }}>{app.purpose}</span></div>
+                        <div><strong style={{ color: 'var(--text-muted)' }}>Dates:</strong> <span style={{ color: 'var(--accent-blue)' }}>{app.from_date} to {app.to_date}</span></div>
                         {app.application_type === 'OD' && (
-                          <div><strong style={{ color: 'var(--text-muted)' }}>Location:</strong> <span style={{ color: '#fff' }}>{app.location}</span></div>
+                          <div><strong style={{ color: 'var(--text-muted)' }}>Location:</strong> <span style={{ color: 'var(--text-primary)' }}>{app.location}</span></div>
                         )}
                       </div>
 
@@ -489,7 +577,7 @@ export default function FacultyPortal({ faculty }) {
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                         {app.document_path ? (
-                          <a href={app.document_path} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.78rem', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
+                          <a href={app.document_path} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.78rem', color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
                             <ExternalLink size={13} />
                             <span>View Supporting Document Proof</span>
                           </a>
@@ -497,7 +585,7 @@ export default function FacultyPortal({ faculty }) {
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No supporting attachment</span>
                         )}
                         {app.faculty_remarks && (
-                          <span style={{ fontSize: '0.75rem', color: '#93c5fd' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                             Faculty Note: {app.faculty_remarks}
                           </span>
                         )}
@@ -551,7 +639,7 @@ export default function FacultyPortal({ faculty }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
               <PlusCircle size={22} color="#38bdf8" />
               <div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff' }}>Today's Class Update</h3>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>Today's Class Update</h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                   Publish general academic lecture notes and topics covered for all students.
                 </p>
@@ -559,7 +647,7 @@ export default function FacultyPortal({ faculty }) {
             </div>
 
             {publishSuccessMsg && (
-              <div style={{ padding: '12px 16px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', borderRadius: '8px', color: '#6ee7b7', fontSize: '0.85rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ padding: '12px 16px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', borderRadius: '8px', color: 'var(--risk-low-text)', fontSize: '0.85rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <CheckCircle size={18} />
                 <span>{publishSuccessMsg}</span>
               </div>
@@ -640,7 +728,7 @@ export default function FacultyPortal({ faculty }) {
 
           {/* Published Updates Feed */}
           <div className="glass-panel" style={{ padding: '28px' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '16px' }}>
               Published General Academic Updates
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '520px', overflowY: 'auto' }}>
@@ -648,14 +736,14 @@ export default function FacultyPortal({ faculty }) {
                 <div key={update.id} style={{
                   padding: '16px',
                   borderRadius: 'var(--radius-md)',
-                  background: 'rgba(15, 23, 42, 0.65)',
+                  background: 'var(--bg-secondary)',
                   border: '1px solid var(--border-color)'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#38bdf8' }}>{update.subject}</span>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent-blue)' }}>{update.subject}</span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{update.update_date}</span>
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: '0.98rem', color: '#fff', marginBottom: '6px' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-primary)', marginBottom: '6px' }}>
                     {update.topic}
                   </div>
                   <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
@@ -677,14 +765,14 @@ export default function FacultyPortal({ faculty }) {
         <div className="glass-panel" style={{ padding: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
             <div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                 Extracurricular Activity Proof Verification
               </h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
                 Inspect student certificates and validate extracurricular records (Hackathons, Workshops, Internships, etc.).
               </p>
             </div>
-            <span style={{ background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc', padding: '6px 14px', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 600 }}>
+            <span style={{ background: 'rgba(192, 132, 252, 0.15)', color: 'var(--accent-purple)', padding: '6px 14px', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 600 }}>
               {extracurricularList.filter(e => e.verification_status === 'Pending').length} Pending Validation
             </span>
           </div>
@@ -694,7 +782,7 @@ export default function FacultyPortal({ faculty }) {
               <div key={item.id} style={{
                 padding: '20px',
                 borderRadius: 'var(--radius-md)',
-                background: 'rgba(15, 23, 42, 0.7)',
+                background: 'var(--bg-secondary)',
                 border: '1px solid var(--border-color)',
                 display: 'flex',
                 flexDirection: 'column',
@@ -703,14 +791,14 @@ export default function FacultyPortal({ faculty }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#c084fc', textTransform: 'uppercase' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-purple)', textTransform: 'uppercase' }}>
                         {item.activity_type}
                       </span>
-                      <span style={{ fontSize: '0.85rem', color: '#38bdf8', fontWeight: 600 }}>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--accent-blue)', fontWeight: 600 }}>
                         {item.student_name} ({item.student_reg})
                       </span>
                     </div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', marginTop: '4px' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>
                       {item.event_name}
                     </div>
                   </div>
@@ -734,7 +822,7 @@ export default function FacultyPortal({ faculty }) {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
                   {item.certificate_path ? (
-                    <a href={item.certificate_path} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.82rem', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
+                    <a href={item.certificate_path} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.82rem', color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
                       <ExternalLink size={14} />
                       <span>Inspect Uploaded Certificate Proof</span>
                     </a>
@@ -770,6 +858,162 @@ export default function FacultyPortal({ faculty }) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* TAB CONTENT 5: ATTENDANCE MODULE */}
+      {activeTab === 'attendance' && (
+        <div className="glass-panel" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+            <button 
+              onClick={() => setAttendanceSubTab('mark')}
+              style={{ background: 'none', border: 'none', color: attendanceSubTab === 'mark' ? 'var(--accent-blue)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', fontSize: '1.05rem' }}
+            >Mark Attendance</button>
+            <button 
+              onClick={() => setAttendanceSubTab('review')}
+              style={{ background: 'none', border: 'none', color: attendanceSubTab === 'review' ? 'var(--accent-blue)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', fontSize: '1.05rem' }}
+            >Attendance Review</button>
+          </div>
+
+          {attendanceSubTab === 'mark' && (
+            <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+                <div className="form-group">
+                  <label className="form-label">Department</label>
+                  <select className="form-select" value={attForm.department} onChange={e => setAttForm({...attForm, department: e.target.value})}>
+                    {attendanceOptions.departments.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Year</label>
+                  <select className="form-select" value={attForm.year} onChange={e => setAttForm({...attForm, year: e.target.value})}>
+                    {attendanceOptions.years.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Section</label>
+                  <select className="form-select" value={attForm.section} onChange={e => setAttForm({...attForm, section: e.target.value})}>
+                    {attendanceOptions.sections.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Subject</label>
+                  <select className="form-select" value={attForm.subject} onChange={e => setAttForm({...attForm, subject: e.target.value})}>
+                    {attendanceOptions.subjects.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Date</label>
+                  <input type="date" className="form-input" value={attForm.date} onChange={e => setAttForm({...attForm, date: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Period</label>
+                  <select className="form-select" value={attForm.period} onChange={e => setAttForm({...attForm, period: e.target.value})}>
+                    {[1,2,3,4,5,6,7,8].map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+              </div>
+              <button onClick={handleFetchStudentsForAttendance} className="btn btn-secondary" style={{ marginBottom: '24px' }}>Load Students</button>
+
+              {attStudents.length > 0 && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <h4 style={{ color: 'var(--text-primary)' }}>Mark Attendance ({attStudents.length} Students)</h4>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => handleMarkAll('Present')} className="btn btn-success" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>Mark All Present</button>
+                      <button onClick={() => handleMarkAll('Absent')} className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>Mark All Absent</button>
+                    </div>
+                  </div>
+                  <table className="custom-table" style={{ marginBottom: '20px' }}>
+                    <thead>
+                      <tr>
+                        <th>Reg No</th>
+                        <th>Student Name</th>
+                        <th style={{ textAlign: 'center' }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {attStudents.map((s, idx) => (
+                        <tr key={s.id}>
+                          <td style={{ fontWeight: 600 }}>{s.reg_number}</td>
+                          <td>{s.name}</td>
+                          <td style={{ textAlign: 'center' }}>
+                            <div style={{ display: 'inline-flex', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '4px' }}>
+                              <button 
+                                onClick={() => handleAttendanceStatusChange(idx, 'Present')}
+                                style={{ padding: '6px 16px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer', fontWeight: 600, background: s.status === 'Present' ? '#10b981' : 'transparent', color: s.status === 'Present' ? '#fff' : 'var(--text-secondary)' }}
+                              >Present</button>
+                              <button 
+                                onClick={() => handleAttendanceStatusChange(idx, 'Absent')}
+                                style={{ padding: '6px 16px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer', fontWeight: 600, background: s.status === 'Absent' ? '#ef4444' : 'transparent', color: s.status === 'Absent' ? '#fff' : 'var(--text-secondary)' }}
+                              >Absent</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                    <button onClick={() => setAttStudents([])} className="btn btn-secondary">Reset / Cancel</button>
+                    <button onClick={handleSubmitAttendance} disabled={savingAtt} className="btn btn-primary">
+                      {savingAtt ? 'Saving...' : 'Save Attendance'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {attendanceSubTab === 'review' && attReview && (
+            <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Total Students</div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>{attReview.total_students}</div>
+                </div>
+                <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Present Today</div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--risk-low-text)' }}>{attReview.present_today}</div>
+                </div>
+                <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Absent Today</div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--risk-high-text)' }}>{attReview.absent_today}</div>
+                </div>
+                <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Overall Attendance</div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--accent-blue)' }}>{attReview.overall_pct}%</div>
+                </div>
+              </div>
+
+              <h4 style={{ color: 'var(--risk-high-text)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertTriangle size={18} /> HIGH ATTENTION: Low Attendance
+              </h4>
+              {attReview.low_attendance_students.length > 0 ? (
+                <table className="custom-table">
+                  <thead>
+                    <tr>
+                      <th>Reg No</th>
+                      <th>Student Name</th>
+                      <th>Attendance %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attReview.low_attendance_students.map(s => (
+                      <tr key={s.reg_number}>
+                        <td style={{ fontWeight: 600 }}>{s.reg_number}</td>
+                        <td>{s.name}</td>
+                        <td style={{ fontWeight: 700, color: 'var(--risk-high-text)' }}>{s.attendance_pct}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div style={{ padding: '20px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)' }}>
+                  No students with critically low attendance.
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

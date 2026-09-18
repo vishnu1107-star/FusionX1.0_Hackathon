@@ -206,7 +206,7 @@ export default function StudentPortal({ student, onRefresh }) {
     return (
       <div style={{ padding: '80px 20px', textAlign: 'center' }}>
         <RefreshCw size={36} className="spin" color="#38bdf8" style={{ margin: '0 auto 16px' }} />
-        <h3 style={{ color: '#fff', fontSize: '1.2rem' }}>Running AI Academic Risk Diagnostics...</h3>
+        <h3 style={{ color: 'var(--text-primary)', fontSize: '1.2rem' }}>Running AI Academic Risk Diagnostics...</h3>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Analyzing attendance, test marks, assignment delays, and performance slope.</p>
       </div>
     );
@@ -215,7 +215,7 @@ export default function StudentPortal({ student, onRefresh }) {
   if (error || !dashboardData) {
     return (
       <div style={{ maxWidth: '800px', margin: '60px auto', padding: '24px' }} className="glass-panel">
-        <div style={{ color: '#fca5a5', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ color: 'var(--risk-high-text)', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <AlertCircle size={24} />
           <span>{error || 'Failed to load dashboard data.'}</span>
         </div>
@@ -241,7 +241,7 @@ export default function StudentPortal({ student, onRefresh }) {
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: '20px',
-        background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.85) 0%, rgba(30, 41, 59, 0.7) 100%)',
+        background: 'var(--bg-card)',
         borderLeft: isHighRisk ? '5px solid var(--risk-high-border)' : isMedRisk ? '5px solid var(--risk-med-border)' : '5px solid var(--risk-low-border)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
@@ -255,17 +255,17 @@ export default function StudentPortal({ student, onRefresh }) {
             justifyContent: 'center',
             fontSize: '1.4rem',
             fontWeight: 800,
-            color: '#fff',
+            color: 'var(--text-primary)',
             boxShadow: '0 8px 20px rgba(59, 130, 246, 0.3)'
           }}>
             {stu.name.split(' ').map(n => n[0]).join('')}
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#fff' }}>{stu.name}</h2>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>{stu.name}</h2>
               <span style={{
-                background: 'rgba(255,255,255,0.08)',
-                color: '#38bdf8',
+                background: 'var(--bg-card)',
+                color: 'var(--accent-blue)',
                 padding: '3px 10px',
                 borderRadius: '6px',
                 fontWeight: 600,
@@ -316,7 +316,7 @@ export default function StudentPortal({ student, onRefresh }) {
         flexWrap: 'wrap',
         gap: '8px',
         padding: '6px',
-        background: 'rgba(15, 23, 42, 0.7)',
+        background: 'var(--bg-secondary)',
         borderRadius: 'var(--radius-lg)',
         marginBottom: '24px',
         border: '1px solid var(--border-color)'
@@ -389,7 +389,7 @@ export default function StudentPortal({ student, onRefresh }) {
               <div style={{
                 marginTop: '10px',
                 height: '6px',
-                background: 'rgba(255,255,255,0.08)',
+                background: 'var(--bg-card)',
                 borderRadius: '999px',
                 overflow: 'hidden'
               }}>
@@ -425,7 +425,7 @@ export default function StudentPortal({ student, onRefresh }) {
                 <AlertCircle size={18} color={acad.submission_delays > 2 ? '#ef4444' : '#10b981'} />
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff' }}>{acad.avg_assignment_score}%</span>
+                <span style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>{acad.avg_assignment_score}%</span>
                 <span style={{ fontSize: '0.85rem', color: acad.submission_delays > 0 ? '#f87171' : '#34d399', fontWeight: 600 }}>
                   ({acad.submission_delays} late)
                 </span>
@@ -467,7 +467,7 @@ export default function StudentPortal({ student, onRefresh }) {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <ShieldAlert size={22} color={isHighRisk ? '#ef4444' : isMedRisk ? '#f59e0b' : '#10b981'} />
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                     AI Early Risk Diagnostic & Explanation
                   </h3>
                 </div>
@@ -490,7 +490,7 @@ export default function StudentPortal({ student, onRefresh }) {
             </div>
 
             {/* Why the student received this risk level (Contributing Factors) */}
-            <div style={{ background: 'rgba(15, 23, 42, 0.7)', borderRadius: 'var(--radius-md)', padding: '18px 20px', border: '1px solid var(--border-color)' }}>
+            <div style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '18px 20px', border: '1px solid var(--border-color)' }}>
               <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
                 Primary Contributing Risk Factors (Why this risk rating was determined):
               </div>
@@ -502,7 +502,7 @@ export default function StudentPortal({ student, onRefresh }) {
                     gap: '10px',
                     padding: '10px 14px',
                     borderRadius: '8px',
-                    background: 'rgba(255, 255, 255, 0.03)',
+                    background: 'var(--bg-secondary)',
                     border: '1px solid rgba(255, 255, 255, 0.05)'
                   }}>
                     <AlertCircle size={16} color={isHighRisk ? '#f87171' : isMedRisk ? '#fcd34d' : '#34d399'} style={{ marginTop: '3px', flexShrink: 0 }} />
@@ -519,7 +519,7 @@ export default function StudentPortal({ student, onRefresh }) {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Award size={22} color="#8b5cf6" />
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                     Personalized Academic Intervention Plan
                   </h3>
                 </div>
@@ -536,7 +536,7 @@ export default function StudentPortal({ student, onRefresh }) {
                   border: '1px solid rgba(239, 68, 68, 0.3)',
                   padding: '6px 14px',
                   borderRadius: '999px',
-                  color: '#fca5a5',
+                  color: 'var(--risk-high-text)',
                   fontSize: '0.78rem',
                   fontWeight: 600
                 }}>
@@ -551,7 +551,7 @@ export default function StudentPortal({ student, onRefresh }) {
                 <div key={idx} style={{
                   padding: '18px',
                   borderRadius: 'var(--radius-md)',
-                  background: 'rgba(15, 23, 42, 0.65)',
+                  background: 'var(--bg-secondary)',
                   border: item.priority === 'CRITICAL' ? '1px solid rgba(239, 68, 68, 0.4)' : item.priority === 'HIGH' ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid var(--border-color)',
                   display: 'flex',
                   flexDirection: 'column',
@@ -569,7 +569,7 @@ export default function StudentPortal({ student, onRefresh }) {
                         {item.category} • {item.priority}
                       </span>
                       <span style={{
-                        background: 'rgba(255,255,255,0.06)',
+                        background: 'var(--bg-card)',
                         padding: '2px 8px',
                         borderRadius: '4px',
                         fontSize: '0.7rem',
@@ -579,7 +579,7 @@ export default function StudentPortal({ student, onRefresh }) {
                       </span>
                     </div>
 
-                    <h4 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#fff', marginBottom: '6px' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
                       {item.title}
                     </h4>
                     <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
@@ -610,7 +610,7 @@ export default function StudentPortal({ student, onRefresh }) {
             <div className="glass-panel" style={{ padding: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
                 <BookOpen size={18} color="#38bdf8" />
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>Subject Assessment Records</h3>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>Subject Assessment Records</h3>
               </div>
               <div style={{ overflowX: 'auto' }}>
                 <table className="custom-table">
@@ -628,14 +628,14 @@ export default function StudentPortal({ student, onRefresh }) {
                         <tr key={i}>
                           <td style={{ fontWeight: 600 }}>{t.subject}</td>
                           <td style={{ color: 'var(--text-secondary)' }}>{t.test_name}</td>
-                          <td style={{ fontWeight: 700, color: (t.obtained_marks / t.max_marks) < 0.5 ? '#f87171' : '#fff' }}>
+                          <td style={{ fontWeight: 700, color: (t.obtained_marks / t.max_marks) < 0.5 ? '#ef4444' : 'var(--text-primary)' }}>
                             {t.obtained_marks} / {t.max_marks}
                           </td>
                           <td>
                             {(t.obtained_marks / t.max_marks) < 0.5 ? (
-                              <span style={{ color: '#f87171', fontSize: '0.75rem', fontWeight: 600 }}>Needs Remediation</span>
+                              <span style={{ color: 'var(--risk-high-text)', fontSize: '0.75rem', fontWeight: 600 }}>Needs Remediation</span>
                             ) : (
-                              <span style={{ color: '#34d399', fontSize: '0.75rem', fontWeight: 600 }}>Satisfactory</span>
+                              <span style={{ color: 'var(--risk-low-text)', fontSize: '0.75rem', fontWeight: 600 }}>Satisfactory</span>
                             )}
                           </td>
                         </tr>
@@ -652,7 +652,7 @@ export default function StudentPortal({ student, onRefresh }) {
             <div className="glass-panel" style={{ padding: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
                 <FileText size={18} color="#8b5cf6" />
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>Assignment Submissions</h3>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>Assignment Submissions</h3>
               </div>
               <div style={{ overflowX: 'auto' }}>
                 <table className="custom-table">
@@ -675,9 +675,9 @@ export default function StudentPortal({ student, onRefresh }) {
                           <td style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{a.due_date}</td>
                           <td>
                             {a.delay_days > 0 ? (
-                              <span style={{ color: '#f87171', fontWeight: 600, fontSize: '0.8rem' }}>+{a.delay_days} days late</span>
+                              <span style={{ color: 'var(--risk-high-text)', fontWeight: 600, fontSize: '0.8rem' }}>+{a.delay_days} days late</span>
                             ) : (
-                              <span style={{ color: '#34d399', fontWeight: 600, fontSize: '0.8rem' }}>On time</span>
+                              <span style={{ color: 'var(--risk-low-text)', fontWeight: 600, fontSize: '0.8rem' }}>On time</span>
                             )}
                           </td>
                           <td style={{ fontWeight: 700 }}>
@@ -707,13 +707,13 @@ export default function StudentPortal({ student, onRefresh }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
               <Send size={22} color="#38bdf8" />
               <div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff' }}>Apply for On-Duty (OD)</h3>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>Apply for On-Duty (OD)</h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Submit official duty request with supporting documents.</p>
               </div>
             </div>
 
             {odSuccessMsg && (
-              <div style={{ padding: '12px 16px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', borderRadius: '8px', color: '#6ee7b7', fontSize: '0.85rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ padding: '12px 16px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', borderRadius: '8px', color: 'var(--risk-low-text)', fontSize: '0.85rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <CheckCircle size={18} />
                 <span>{odSuccessMsg}</span>
               </div>
@@ -801,7 +801,7 @@ export default function StudentPortal({ student, onRefresh }) {
 
           {/* OD Applications History */}
           <div className="glass-panel" style={{ padding: '28px' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '16px' }}>
               My OD Applications History
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '500px', overflowY: 'auto' }}>
@@ -810,12 +810,12 @@ export default function StudentPortal({ student, onRefresh }) {
                   <div key={item.id} style={{
                     padding: '16px',
                     borderRadius: 'var(--radius-md)',
-                    background: 'rgba(15, 23, 42, 0.6)',
+                    background: 'var(--bg-secondary)',
                     border: '1px solid var(--border-color)'
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#fff' }}>{item.purpose}</div>
+                        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{item.purpose}</div>
                         <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>📍 {item.location}</div>
                       </div>
                       <span className={`risk-badge ${
@@ -836,7 +836,7 @@ export default function StudentPortal({ student, onRefresh }) {
                     )}
 
                     {item.faculty_remarks && (
-                      <div style={{ fontSize: '0.75rem', padding: '6px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: '6px', color: '#93c5fd' }}>
+                      <div style={{ fontSize: '0.75rem', padding: '6px 10px', background: 'var(--bg-card)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
                         <strong>Faculty Remarks:</strong> {item.faculty_remarks}
                       </div>
                     )}
@@ -862,13 +862,13 @@ export default function StudentPortal({ student, onRefresh }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
               <Calendar size={22} color="#f59e0b" />
               <div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff' }}>Apply for Leave</h3>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>Apply for Leave</h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Submit leave request for approval by faculty advisor.</p>
               </div>
             </div>
 
             {leaveSuccessMsg && (
-              <div style={{ padding: '12px 16px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', borderRadius: '8px', color: '#6ee7b7', fontSize: '0.85rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ padding: '12px 16px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', borderRadius: '8px', color: 'var(--risk-low-text)', fontSize: '0.85rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <CheckCircle size={18} />
                 <span>{leaveSuccessMsg}</span>
               </div>
@@ -933,7 +933,7 @@ export default function StudentPortal({ student, onRefresh }) {
 
           {/* Leave History */}
           <div className="glass-panel" style={{ padding: '28px' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '16px' }}>
               My Leave Applications History
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '500px', overflowY: 'auto' }}>
@@ -942,11 +942,11 @@ export default function StudentPortal({ student, onRefresh }) {
                   <div key={item.id} style={{
                     padding: '16px',
                     borderRadius: 'var(--radius-md)',
-                    background: 'rgba(15, 23, 42, 0.6)',
+                    background: 'var(--bg-secondary)',
                     border: '1px solid var(--border-color)'
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                      <div style={{ fontWeight: 600, fontSize: '0.92rem', color: '#fff' }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
                         {item.purpose}
                       </div>
                       <span className={`risk-badge ${
@@ -961,7 +961,7 @@ export default function StudentPortal({ student, onRefresh }) {
                     </div>
 
                     {item.faculty_remarks && (
-                      <div style={{ fontSize: '0.75rem', padding: '6px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: '6px', color: '#93c5fd' }}>
+                      <div style={{ fontSize: '0.75rem', padding: '6px 10px', background: 'var(--bg-card)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
                         <strong>Faculty Remarks:</strong> {item.faculty_remarks}
                       </div>
                     )}
@@ -985,7 +985,7 @@ export default function StudentPortal({ student, onRefresh }) {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <BookOpen size={24} color="#38bdf8" />
-                <h3 style={{ fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>General Class Updates & Study Materials</h3>
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-primary)' }}>General Class Updates & Study Materials</h3>
               </div>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>
                 Faculty published daily class summaries, topics covered, and downloadable lecture notes for all students.
@@ -1003,7 +1003,7 @@ export default function StudentPortal({ student, onRefresh }) {
                 <div key={update.id} style={{
                   padding: '20px',
                   borderRadius: 'var(--radius-md)',
-                  background: 'rgba(15, 23, 42, 0.65)',
+                  background: 'var(--bg-secondary)',
                   border: '1px solid var(--border-color)',
                   display: 'flex',
                   flexDirection: 'column',
@@ -1012,7 +1012,7 @@ export default function StudentPortal({ student, onRefresh }) {
                 }}>
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-blue)', textTransform: 'uppercase' }}>
                         {update.subject}
                       </span>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -1020,7 +1020,7 @@ export default function StudentPortal({ student, onRefresh }) {
                       </span>
                     </div>
 
-                    <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
+                    <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
                       {update.topic}
                     </h4>
 
@@ -1069,7 +1069,7 @@ export default function StudentPortal({ student, onRefresh }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
               <Award size={22} color="#8b5cf6" />
               <div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff' }}>Add Extracurricular Activity</h3>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>Add Extracurricular Activity</h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                   Upload proof certificate for faculty verification to make it an official record.
                 </p>
@@ -1077,7 +1077,7 @@ export default function StudentPortal({ student, onRefresh }) {
             </div>
 
             {activitySuccessMsg && (
-              <div style={{ padding: '12px 16px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', borderRadius: '8px', color: '#6ee7b7', fontSize: '0.85rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ padding: '12px 16px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', borderRadius: '8px', color: 'var(--risk-low-text)', fontSize: '0.85rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <CheckCircle size={18} />
                 <span>{activitySuccessMsg}</span>
               </div>
@@ -1171,7 +1171,7 @@ export default function StudentPortal({ student, onRefresh }) {
 
           {/* Verified Extracurricular Records */}
           <div className="glass-panel" style={{ padding: '28px' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff', marginBottom: '6px' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
               Extracurricular Portfolio Transcript
             </h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
@@ -1184,15 +1184,15 @@ export default function StudentPortal({ student, onRefresh }) {
                   <div key={item.id} style={{
                     padding: '16px',
                     borderRadius: 'var(--radius-md)',
-                    background: 'rgba(15, 23, 42, 0.65)',
+                    background: 'var(--bg-secondary)',
                     border: '1px solid var(--border-color)'
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
                       <div>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#c084fc', textTransform: 'uppercase' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--accent-purple)', textTransform: 'uppercase' }}>
                           {item.activity_type}
                         </span>
-                        <div style={{ fontWeight: 700, fontSize: '1rem', color: '#fff' }}>{item.event_name}</div>
+                        <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>{item.event_name}</div>
                       </div>
                       <span className={`risk-badge ${
                         item.verification_status === 'Verified' ? 'risk-badge-low' : item.verification_status === 'Rejected' ? 'risk-badge-high' : 'risk-badge-medium'
@@ -1206,7 +1206,7 @@ export default function StudentPortal({ student, onRefresh }) {
                     </div>
 
                     {item.participation_details && (
-                      <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#38bdf8', marginBottom: '6px' }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--accent-blue)', marginBottom: '6px' }}>
                         🏆 {item.participation_details}
                       </div>
                     )}
@@ -1219,7 +1219,7 @@ export default function StudentPortal({ student, onRefresh }) {
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px' }}>
                       {item.certificate_path ? (
-                        <a href={item.certificate_path} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.78rem', color: '#38bdf8', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <a href={item.certificate_path} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.78rem', color: 'var(--accent-blue)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <ExternalLink size={13} />
                           <span>View Certificate Proof</span>
                         </a>
@@ -1227,7 +1227,7 @@ export default function StudentPortal({ student, onRefresh }) {
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No file attached</span>
                       )}
                       {item.faculty_remarks && (
-                        <span style={{ fontSize: '0.75rem', color: '#93c5fd' }}>Note: {item.faculty_remarks}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Note: {item.faculty_remarks}</span>
                       )}
                     </div>
                   </div>
@@ -1249,14 +1249,14 @@ export default function StudentPortal({ student, onRefresh }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
             <FileCheck size={28} color="#38bdf8" />
             <div>
-              <h3 style={{ fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>Instant Bonafide Certificate Generator</h3>
+              <h3 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-primary)' }}>Instant Bonafide Certificate Generator</h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                 Select purpose to generate official verified certificate populated with institutional records.
               </p>
             </div>
           </div>
 
-          <div style={{ background: 'rgba(15, 23, 42, 0.65)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '24px', border: '1px solid var(--border-color)' }}>
+          <div style={{ background: 'var(--bg-secondary)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '24px', border: '1px solid var(--border-color)' }}>
             <div className="form-group">
               <label className="form-label">Select Purpose of Bonafide Certificate *</label>
               <select

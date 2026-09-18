@@ -1,5 +1,6 @@
 -- EduShield AI Database Schema (PostgreSQL Compatible)
 
+DROP TABLE IF EXISTS attendance_records CASCADE;
 DROP TABLE IF EXISTS bonafide_requests CASCADE;
 DROP TABLE IF EXISTS extracurricular_activities CASCADE;
 DROP TABLE IF EXISTS class_updates CASCADE;
@@ -33,6 +34,7 @@ CREATE TABLE students (
     course VARCHAR(100) NOT NULL,
     year INT NOT NULL,
     semester INT NOT NULL,
+    section VARCHAR(10) DEFAULT 'A',
     email VARCHAR(100),
     phone VARCHAR(20),
     mentor_name VARCHAR(100),
@@ -165,4 +167,16 @@ CREATE TABLE bonafide_requests (
     status VARCHAR(50) DEFAULT 'Generated',
     certificate_number VARCHAR(100) UNIQUE,
     generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Attendance Records Table
+CREATE TABLE attendance_records (
+    id SERIAL PRIMARY KEY,
+    student_id INT REFERENCES students(id) ON DELETE CASCADE,
+    faculty_id INT REFERENCES faculty(id) ON DELETE SET NULL,
+    subject VARCHAR(100) NOT NULL,
+    attendance_date DATE NOT NULL,
+    period INT NOT NULL,
+    status VARCHAR(10) NOT NULL,
+    UNIQUE(student_id, subject, attendance_date, period)
 );

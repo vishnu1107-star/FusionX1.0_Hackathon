@@ -5,7 +5,7 @@ export default function Navbar({ user, role, onLogout, activeTab, setActiveTab }
   return (
     <header style={{
       borderBottom: '1px solid var(--border-color)',
-      background: 'rgba(11, 15, 25, 0.85)',
+      background: 'rgba(255, 255, 255, 0.95)',
       backdropFilter: 'blur(12px)',
       position: 'sticky',
       top: 0,
@@ -34,7 +34,7 @@ export default function Navbar({ user, role, onLogout, activeTab, setActiveTab }
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
                 EduShield <span style={{ color: '#38bdf8' }}>AI</span>
               </h1>
               <span style={{
@@ -64,7 +64,7 @@ export default function Navbar({ user, role, onLogout, activeTab, setActiveTab }
               alignItems: 'center',
               gap: '12px',
               padding: '6px 14px',
-              background: 'rgba(255, 255, 255, 0.05)',
+              background: 'var(--bg-secondary)',
               borderRadius: '999px',
               border: '1px solid var(--border-color)'
             }}>
@@ -82,7 +82,7 @@ export default function Navbar({ user, role, onLogout, activeTab, setActiveTab }
                 {role === 'faculty' ? 'FAC' : (user.reg_number || 'STU')}
               </div>
               <div style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                   {user.name}
                 </div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
