@@ -1,0 +1,786 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Users, AlertTriangle, CheckCircle, Clock, BookOpen, Send, 
+  Calendar, FileText, Award, Eye, ThumbsUp, ThumbsDown, 
+  RefreshCw, ShieldAlert, PlusCircle, ExternalLink, Check, X,
+  FileCheck, Sparkles, Filter, ChevronRight
+} from 'lucide-react';
+import { api } from '../services/api';
+import StudentReportModal from '../components/StudentReportModal';
+
+export default function FacultyPortal({ faculty }) {
+  const [activeTab, setActiveTab] = useState('watchlist'); // 'watchlist', 'applications', 'class_updates', 'extracurricular'
+  const [stats, setStats] = useState(null);
+  const [watchlist, setWatchlist] = useState([]);
+  const [applications, setApplications] = useState([]);
+  const [classUpdates, setClassUpdates] = useState([]);
+  const [extracurricularList, setExtracurricularList] = useState([]);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // New Class Update Form
+  const [updateForm, setUpdateForm] = useState({
+    subject: 'Database Management Systems',
+    update_date: new Date().toISOString().split('T')[0],
+    topic: '',
+    description: '',
+    document: null
+  });
+  const [publishing, setPublishing] = useState(false);
+  const [publishSuccessMsg, setPublishSuccessMsg] = useState('');
+
+  const loadFacultyData = async () => {
+    setLoading(true);
+    try {
+      const [statsRes, watchRes, appRes, updatesRes, extraRes] = await Promise.all([
+        api.getFacultyStats(),
+        api.getRiskWatchlist(),
+        api.getAllApplications(),
+        api.getClassUpdates(),
+        api.getFacultyExtracurricularList()
+      ]);
+
+      if (statsRes.success) setStats(statsRes.stats);
+      if (watchRes.success) setWatchlist(watchRes.watchlist);
+      if (appRes.success) setApplications(appRes.applications);
+      if (updatesRes.success) setClassUpdates(updatesRes.class_updates);
+      if (extraRes.success) setExtracurricularList(extraRes.activities);
+    } catch (err) {
+      console.error("Failed to load faculty data", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadFacultyData();
+  }, []);
+
+  // Handle Application Action (Approve / Reject)
+  const handleApplicationAction = async (type, id, action) => {
+    const remarks = prompt(`Enter optional remarks for ${action.toLowerCase()}ing this ${type} request:`, `${action} by Faculty Advisor`);
+    if (remarks === null) return; // cancelled
+
+    try {
+      const res = await api.takeFacultyAction(type, id, action, remarks);
+      if (res.success) {
+        // Refresh application list and stats
+        const appRes = await api.getAllApplications();
+        if (appRes.success) setApplications(appRes.applications);
+        const statsRes = await api.getFacultyStats();
+        if (statsRes.success) setStats(statsRes.stats);
+      } else {
+        alert(res.message || 'Error processing action');
+      }
+    } catch (err) {
+      alert('Network error while processing application');
+    }
+  };
+
+  // Handle Extracurricular Verification
+  const handleVerifyExtracurricular = async (actId, status) => {
+    const remarks = prompt(`Enter verification note (e.g. "Certificate verified from official hackathon portal"):`, status === 'Verified' ? 'Approved & Validated' : 'Certificate unverified');
+    if (remarks === null) return;
+
+    try {
+      const res = await api.verifyExtracurricular(actId, status, remarks);
+      if (res.success) {
+        const extraRes = await api.getFacultyExtracurricularList();
+        if (extraRes.success) setExtracurricularList(extraRes.activities);
+        const statsRes = await api.getFacultyStats();
+        if (statsRes.success) setStats(statsRes.stats);
+      } else {
+        alert(res.message || 'Error updating activity status');
+      }
+    } catch (err) {
+      alert('Network error verifying activity');
+    }
+  };
+
+  // Handle Class Update Publication
+  const handlePublishClassUpdate = async (e) => {
+    e.preventDefault();
+    setPublishing(true);
+    setPublishSuccessMsg('');
+    try {
+      const fd = new FormData();
+      fd.append('faculty_name', faculty.name);
+      fd.append('department', faculty.department);
+      fd.append('subject', updateForm.subject);
+      fd.append('update_date', updateForm.update_date);
+      fd.append('topic', updateForm.topic);
+      fd.append('description', updateForm.description);
+      if (updateForm.document) fd.append('document', updateForm.document);
+
+      const res = await api.publishClassUpdate(fd);
+      if (res.success) {
+        setPublishSuccessMsg(res.message);
+        setUpdateForm({
+          subject: 'Database Management Systems',
+          update_date: new Date().toISOString().split('T')[0],
+          topic: '',
+          description: '',
+          document: null
+        });
+        const updatesRes = await api.getClassUpdates();
+        if (updatesRes.success) setClassUpdates(updatesRes.class_updates);
+      } else {
+        alert(res.message || 'Error publishing update');
+      }
+    } catch (err) {
+      alert('Network error publishing class update');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  if (loading && !stats) {
+    return (
+      <div style={{ padding: '80px 20px', textAlign: 'center' }}>
+        <RefreshCw size={36} className="spin" color="#8b5cf6" style={{ margin: '0 auto 16px' }} />
+        <h3 style={{ color: '#fff' }}>Loading Faculty Intelligence Dashboard...</h3>
+      </div>
+    );
+  }
+
+  const pendingApps = applications.filter(a => a.status === 'Pending');
+
+  return (
+    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px 20px' }}>
+      
+      {/* 1. Header & Stats Overview Banner */}
+      <div className="glass-panel" style={{
+        padding: '24px 28px',
+        marginBottom: '24px',
+        background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.85) 0%, rgba(30, 41, 59, 0.7) 100%)',
+        borderLeft: '5px solid #8b5cf6'
+      }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Users size={22} color="#8b5cf6" />
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff' }}>
+                Faculty Academic Monitoring & Intervention Portal
+              </h2>
+            </div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+              Faculty Advisor: <strong>{faculty.name}</strong> • {faculty.department} ({faculty.faculty_id})
+            </p>
+          </div>
+
+          <button onClick={loadFacultyData} className="btn btn-secondary" style={{ padding: '8px 14px', fontSize: '0.82rem' }}>
+            <RefreshCw size={15} />
+            <span>Refresh Diagnostics</span>
+          </button>
+        </div>
+
+        {/* 6 Metric Stats Cards */}
+        {stats && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginTop: '20px' }}>
+            
+            <div style={{ padding: '14px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Students</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff' }}>{stats.total_students}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Enrolled in Dept</div>
+            </div>
+
+            <div style={{ padding: '14px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '10px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+              <div style={{ fontSize: '0.75rem', color: '#fca5a5' }}>High Risk Students</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ef4444' }}>{stats.high_risk_students}</div>
+              <div style={{ fontSize: '0.7rem', color: '#fca5a5' }}>Immediate Intervention</div>
+            </div>
+
+            <div style={{ padding: '14px', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '10px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+              <div style={{ fontSize: '0.75rem', color: '#fcd34d' }}>Medium Risk Students</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f59e0b' }}>{stats.medium_risk_students}</div>
+              <div style={{ fontSize: '0.7rem', color: '#fcd34d' }}>Close Monitoring</div>
+            </div>
+
+            <div style={{ padding: '14px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '10px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+              <div style={{ fontSize: '0.75rem', color: '#6ee7b7' }}>Low Risk Students</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#10b981' }}>{stats.low_risk_students}</div>
+              <div style={{ fontSize: '0.7rem', color: '#6ee7b7' }}>Satisfactory Progress</div>
+            </div>
+
+            <div style={{ padding: '14px', background: 'rgba(56, 189, 248, 0.1)', borderRadius: '10px', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+              <div style={{ fontSize: '0.75rem', color: '#38bdf8' }}>Pending OD Requests</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#38bdf8' }}>{stats.pending_od_applications}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Awaiting Decision</div>
+            </div>
+
+            <div style={{ padding: '14px', background: 'rgba(139, 92, 246, 0.1)', borderRadius: '10px', border: '1px solid rgba(139, 92, 246, 0.3)' }}>
+              <div style={{ fontSize: '0.75rem', color: '#c084fc' }}>Pending Leave Requests</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#a855f7' }}>{stats.pending_leave_applications}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Awaiting Decision</div>
+            </div>
+
+          </div>
+        )}
+      </div>
+
+      {/* Navigation Sub-Tabs */}
+      <div style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '8px',
+        padding: '6px',
+        background: 'rgba(15, 23, 42, 0.7)',
+        borderRadius: 'var(--radius-lg)',
+        marginBottom: '24px',
+        border: '1px solid var(--border-color)'
+      }}>
+        <button
+          onClick={() => setActiveTab('watchlist')}
+          className={`tab-btn ${activeTab === 'watchlist' ? 'active' : ''}`}
+        >
+          <ShieldAlert size={17} />
+          <span>Student Risk Watchlist ({watchlist.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('applications')}
+          className={`tab-btn ${activeTab === 'applications' ? 'active' : ''}`}
+        >
+          <Clock size={17} />
+          <span>OD & Leave Management ({pendingApps.length} Pending)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('class_updates')}
+          className={`tab-btn ${activeTab === 'class_updates' ? 'active' : ''}`}
+        >
+          <BookOpen size={17} />
+          <span>General Class Updates ({classUpdates.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('extracurricular')}
+          className={`tab-btn ${activeTab === 'extracurricular' ? 'active' : ''}`}
+        >
+          <Award size={17} />
+          <span>Extracurricular Verification ({extracurricularList.filter(e => e.verification_status === 'Pending').length} Pending)</span>
+        </button>
+      </div>
+
+      {/* TAB CONTENT 1: RANKED STUDENT RISK WATCHLIST */}
+      {activeTab === 'watchlist' && (
+        <div className="glass-panel" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>
+                Ranked Academic Risk Watchlist
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                Students automatically ranked by AI calculated risk severity before final results. Click a student to view full diagnostics.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <span className="risk-badge risk-badge-high">High: {stats?.high_risk_students || 0}</span>
+              <span className="risk-badge risk-badge-medium">Medium: {stats?.medium_risk_students || 0}</span>
+              <span className="risk-badge risk-badge-low">Low: {stats?.low_risk_students || 0}</span>
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th>Rank & Student</th>
+                  <th>Attendance</th>
+                  <th>Test Average</th>
+                  <th>Assignments</th>
+                  <th>Delays</th>
+                  <th>Trend</th>
+                  <th>Risk Score</th>
+                  <th>Risk Level</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {watchlist.map((stu, index) => {
+                  const isHigh = stu.risk_level === 'HIGH';
+                  const isMed = stu.risk_level === 'MEDIUM';
+
+                  return (
+                    <tr
+                      key={stu.id}
+                      style={{
+                        background: isHigh ? 'rgba(239, 68, 68, 0.05)' : 'transparent',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => setSelectedStudent(stu)}
+                    >
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            background: isHigh ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.06)',
+                            color: isHigh ? '#fca5a5' : '#fff',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            {index + 1}
+                          </span>
+                          <div>
+                            <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.92rem' }}>{stu.name}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#38bdf8' }}>{stu.reg_number} • {stu.course}</div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td>
+                        <span style={{ fontWeight: 700, color: stu.attendance_pct < 75 ? '#f87171' : '#34d399' }}>
+                          {stu.attendance_pct}%
+                        </span>
+                      </td>
+
+                      <td>
+                        <span style={{ fontWeight: 600, color: stu.avg_test_score < 50 ? '#f87171' : '#fff' }}>
+                          {stu.avg_test_score}%
+                        </span>
+                      </td>
+
+                      <td>
+                        <span style={{ color: 'var(--text-secondary)' }}>{stu.avg_assignment_score}%</span>
+                      </td>
+
+                      <td>
+                        {stu.submission_delays > 0 ? (
+                          <span style={{ color: '#f87171', fontWeight: 600 }}>{stu.submission_delays} late</span>
+                        ) : (
+                          <span style={{ color: '#34d399' }}>0</span>
+                        )}
+                      </td>
+
+                      <td>
+                        <span style={{
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          color: stu.performance_trend === 'Improving' ? '#34d399' : stu.performance_trend === 'Declining' ? '#f87171' : '#fcd34d'
+                        }}>
+                          {stu.performance_trend}
+                        </span>
+                      </td>
+
+                      <td>
+                        <span style={{ fontWeight: 800, fontSize: '0.95rem', color: isHigh ? '#f87171' : isMed ? '#fcd34d' : '#34d399' }}>
+                          {stu.risk_score}/100
+                        </span>
+                      </td>
+
+                      <td>
+                        <span className={`risk-badge ${isHigh ? 'risk-badge-high' : isMed ? 'risk-badge-medium' : 'risk-badge-low'}`}>
+                          {stu.risk_level}
+                        </span>
+                      </td>
+
+                      <td style={{ textAlign: 'right' }}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedStudent(stu); }}
+                          className="btn btn-secondary"
+                          style={{ padding: '6px 12px', fontSize: '0.78rem' }}
+                        >
+                          <Eye size={14} />
+                          <span>Full Report</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB CONTENT 2: OD & LEAVE MANAGEMENT */}
+      {activeTab === 'applications' && (
+        <div className="glass-panel" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>
+                OD & Leave Application Management
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                Review duty and leave requests. The system presents student academic context (Attendance & Risk), while faculty makes the final Approve / Reject decision.
+              </p>
+            </div>
+            <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '6px 14px', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 600 }}>
+              {pendingApps.length} Pending Actions
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {applications.length > 0 ? (
+              applications.map((app) => {
+                const isHigh = app.risk_level === 'HIGH';
+                const isMed = app.risk_level === 'MEDIUM';
+
+                return (
+                  <div key={`${app.application_type}-${app.id}`} style={{
+                    padding: '20px',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'rgba(15, 23, 42, 0.7)',
+                    border: '1px solid var(--border-color)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '14px'
+                  }}>
+                    {/* Header line */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          background: app.application_type === 'OD' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                          color: app.application_type === 'OD' ? '#38bdf8' : '#fbbf24',
+                          fontWeight: 700,
+                          fontSize: '0.85rem'
+                        }}>
+                          {app.application_type} Application
+                        </span>
+                        <div>
+                          <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff' }}>
+                            {app.student_name} ({app.student_reg})
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            {app.department} • Year {app.year} (Sem {app.semester})
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Academic Risk Context Badge for Faculty Decision Assistance */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ textAlign: 'right', fontSize: '0.78rem' }}>
+                          <span style={{ color: 'var(--text-muted)' }}>Current Attendance: </span>
+                          <strong style={{ color: app.attendance_pct < 75 ? '#f87171' : '#34d399' }}>{app.attendance_pct}%</strong>
+                        </div>
+                        <span className={`risk-badge ${isHigh ? 'risk-badge-high' : isMed ? 'risk-badge-medium' : 'risk-badge-low'}`}>
+                          {app.risk_level} RISK
+                        </span>
+                        <span className={`risk-badge ${
+                          app.status === 'Approved' ? 'risk-badge-low' : app.status === 'Rejected' ? 'risk-badge-high' : 'risk-badge-medium'
+                        }`} style={{ padding: '4px 10px' }}>
+                          Status: {app.status}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Application Details Body */}
+                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', fontSize: '0.82rem', marginBottom: '8px' }}>
+                        <div><strong style={{ color: 'var(--text-muted)' }}>Purpose:</strong> <span style={{ color: '#fff' }}>{app.purpose}</span></div>
+                        <div><strong style={{ color: 'var(--text-muted)' }}>Dates:</strong> <span style={{ color: '#38bdf8' }}>{app.from_date} to {app.to_date}</span></div>
+                        {app.application_type === 'OD' && (
+                          <div><strong style={{ color: 'var(--text-muted)' }}>Location:</strong> <span style={{ color: '#fff' }}>{app.location}</span></div>
+                        )}
+                      </div>
+
+                      {app.event_details && (
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '6px' }}>
+                          <strong>Event Summary:</strong> {app.event_details}
+                        </p>
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                        {app.document_path ? (
+                          <a href={app.document_path} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.78rem', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
+                            <ExternalLink size={13} />
+                            <span>View Supporting Document Proof</span>
+                          </a>
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No supporting attachment</span>
+                        )}
+                        {app.faculty_remarks && (
+                          <span style={{ fontSize: '0.75rem', color: '#93c5fd' }}>
+                            Faculty Note: {app.faculty_remarks}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Faculty Action Buttons */}
+                    {app.status === 'Pending' ? (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                        <button
+                          onClick={() => handleApplicationAction(app.application_type, app.id, 'Approved')}
+                          className="btn btn-success"
+                          style={{ padding: '8px 16px', fontSize: '0.82rem' }}
+                        >
+                          <ThumbsUp size={15} />
+                          <span>APPROVE</span>
+                        </button>
+                        <button
+                          onClick={() => handleApplicationAction(app.application_type, app.id, 'Rejected')}
+                          className="btn btn-danger"
+                          style={{ padding: '8px 16px', fontSize: '0.82rem' }}
+                        >
+                          <ThumbsDown size={15} />
+                          <span>REJECT</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textAlign: 'right' }}>
+                        Decision completed: Marked as <strong>{app.status}</strong>
+                      </div>
+                    )}
+
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '50px 0' }}>
+                No applications found.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB CONTENT 3: GENERAL CLASS UPDATE MODULE */}
+      {activeTab === 'class_updates' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '24px' }}>
+          
+          {/* Publish Update Form */}
+          <div className="glass-panel" style={{ padding: '28px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <PlusCircle size={22} color="#38bdf8" />
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff' }}>Today's Class Update</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  Publish general academic lecture notes and topics covered for all students.
+                </p>
+              </div>
+            </div>
+
+            {publishSuccessMsg && (
+              <div style={{ padding: '12px 16px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', borderRadius: '8px', color: '#6ee7b7', fontSize: '0.85rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle size={18} />
+                <span>{publishSuccessMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handlePublishClassUpdate}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div className="form-group">
+                  <label className="form-label">Subject *</label>
+                  <select
+                    className="form-select"
+                    value={updateForm.subject}
+                    onChange={(e) => setUpdateForm({ ...updateForm, subject: e.target.value })}
+                  >
+                    <option value="Database Management Systems">Database Management Systems</option>
+                    <option value="Discrete Mathematics">Discrete Mathematics</option>
+                    <option value="Operating Systems">Operating Systems</option>
+                    <option value="Data Structures & Algorithms">Data Structures & Algorithms</option>
+                    <option value="Computer Networks">Computer Networks</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Date *</label>
+                  <input
+                    type="date"
+                    required
+                    className="form-input"
+                    value={updateForm.update_date}
+                    onChange={(e) => setUpdateForm({ ...updateForm, update_date: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Topic / Topics Covered *</label>
+                <input
+                  type="text"
+                  required
+                  className="form-input"
+                  placeholder="e.g. Normalization (1NF, 2NF, 3NF, BCNF)"
+                  value={updateForm.topic}
+                  onChange={(e) => setUpdateForm({ ...updateForm, topic: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Description / Lecture Summary</label>
+                <textarea
+                  rows="3"
+                  className="form-textarea"
+                  placeholder="Explain key theorems, problems solved in class, homework hints, etc."
+                  value={updateForm.description}
+                  onChange={(e) => setUpdateForm({ ...updateForm, description: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Lecture Notes / PDF Attachment (Optional)</label>
+                <input
+                  type="file"
+                  className="form-input"
+                  onChange={(e) => setUpdateForm({ ...updateForm, document: e.target.files[0] })}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={publishing}
+                className="btn btn-primary"
+                style={{ width: '100%', marginTop: '10px' }}
+              >
+                {publishing ? 'Publishing Lecture Update...' : 'PUBLISH CLASS UPDATE'}
+                <Send size={16} />
+              </button>
+            </form>
+          </div>
+
+          {/* Published Updates Feed */}
+          <div className="glass-panel" style={{ padding: '28px' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff', marginBottom: '16px' }}>
+              Published General Academic Updates
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '520px', overflowY: 'auto' }}>
+              {classUpdates.map((update) => (
+                <div key={update.id} style={{
+                  padding: '16px',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'rgba(15, 23, 42, 0.65)',
+                  border: '1px solid var(--border-color)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#38bdf8' }}>{update.subject}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{update.update_date}</span>
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: '0.98rem', color: '#fff', marginBottom: '6px' }}>
+                    {update.topic}
+                  </div>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                    {update.description}
+                  </p>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    Published by {update.faculty_name}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* TAB CONTENT 4: EXTRACURRICULAR ACTIVITY VERIFICATION */}
+      {activeTab === 'extracurricular' && (
+        <div className="glass-panel" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>
+                Extracurricular Activity Proof Verification
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                Inspect student certificates and validate extracurricular records (Hackathons, Workshops, Internships, etc.).
+              </p>
+            </div>
+            <span style={{ background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc', padding: '6px 14px', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 600 }}>
+              {extracurricularList.filter(e => e.verification_status === 'Pending').length} Pending Validation
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {extracurricularList.map((item) => (
+              <div key={item.id} style={{
+                padding: '20px',
+                borderRadius: 'var(--radius-md)',
+                background: 'rgba(15, 23, 42, 0.7)',
+                border: '1px solid var(--border-color)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#c084fc', textTransform: 'uppercase' }}>
+                        {item.activity_type}
+                      </span>
+                      <span style={{ fontSize: '0.85rem', color: '#38bdf8', fontWeight: 600 }}>
+                        {item.student_name} ({item.student_reg})
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', marginTop: '4px' }}>
+                      {item.event_name}
+                    </div>
+                  </div>
+
+                  <span className={`risk-badge ${
+                    item.verification_status === 'Verified' ? 'risk-badge-low' : item.verification_status === 'Rejected' ? 'risk-badge-high' : 'risk-badge-medium'
+                  }`}>
+                    {item.verification_status}
+                  </span>
+                </div>
+
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                  <strong>Date:</strong> {item.activity_date} {item.participation_details && `• Achievement: ${item.participation_details}`}
+                </div>
+
+                {item.description && (
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    {item.description}
+                  </p>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
+                  {item.certificate_path ? (
+                    <a href={item.certificate_path} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.82rem', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
+                      <ExternalLink size={14} />
+                      <span>Inspect Uploaded Certificate Proof</span>
+                    </a>
+                  ) : (
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>No certificate attached</span>
+                  )}
+
+                  {item.verification_status === 'Pending' ? (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => handleVerifyExtracurricular(item.id, 'Verified')}
+                        className="btn btn-success"
+                        style={{ padding: '6px 14px', fontSize: '0.78rem' }}
+                      >
+                        <Check size={14} />
+                        <span>Verify Record</span>
+                      </button>
+                      <button
+                        onClick={() => handleVerifyExtracurricular(item.id, 'Rejected')}
+                        className="btn btn-danger"
+                        style={{ padding: '6px 14px', fontSize: '0.78rem' }}
+                      >
+                        <X size={14} />
+                        <span>Reject</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      Record is <strong>{item.verification_status}</strong> {item.faculty_remarks && `(${item.faculty_remarks})`}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Student Deep-Dive Academic Report Diagnostics Modal */}
+      {selectedStudent && (
+        <StudentReportModal
+          student={selectedStudent}
+          onClose={() => setSelectedStudent(null)}
+        />
+      )}
+
+    </div>
+  );
+}
