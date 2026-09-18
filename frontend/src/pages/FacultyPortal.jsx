@@ -38,24 +38,30 @@ export default function FacultyPortal({ faculty, activeTab, setActiveTab }) {
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadingDetails, setUploadingDetails] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
-
   const loadFacultyData = async () => {
     setLoading(true);
     try {
-      const [statsRes, watchRes, appRes, updatesRes, extraRes, attOptRes] = await Promise.all([
+      const results = await Promise.allSettled([
         api.getFacultyStats(),
         api.getRiskWatchlist(),
         api.getAllApplications(),
         api.getClassUpdates(),
         api.getFacultyExtracurricularList(),
-        api.getAttendanceOptions().catch(() => null)
+        api.getAttendanceOptions()
       ]);
+      const [statsResult, watchResult, appResult, updatesResult, extraResult, attOptResult] = results;
+      const statsRes = statsResult.status === 'fulfilled' ? statsResult.value : null;
+      const watchRes = watchResult.status === 'fulfilled' ? watchResult.value : null;
+      const appRes = appResult.status === 'fulfilled' ? appResult.value : null;
+      const updatesRes = updatesResult.status === 'fulfilled' ? updatesResult.value : null;
+      const extraRes = extraResult.status === 'fulfilled' ? extraResult.value : null;
+      const attOptRes = attOptResult.status === 'fulfilled' ? attOptResult.value : null;
 
-      if (statsRes.success) setStats(statsRes.stats);
-      if (watchRes.success) setWatchlist(watchRes.watchlist);
-      if (appRes.success) setApplications(appRes.applications);
-      if (updatesRes.success) setClassUpdates(updatesRes.class_updates);
-      if (extraRes.success) setExtracurricularList(extraRes.activities);
+      if (statsRes?.success) setStats(statsRes.stats);
+      if (watchRes?.success) setWatchlist(watchRes.watchlist);
+      if (appRes?.success) setApplications(appRes.applications);
+      if (updatesRes?.success) setClassUpdates(updatesRes.class_updates);
+      if (extraRes?.success) setExtracurricularList(extraRes.activities);
       if (attOptRes && attOptRes.status === 'success') {
         setAttendanceOptions(attOptRes.data);
         setAttForm(prev => ({
@@ -242,19 +248,16 @@ export default function FacultyPortal({ faculty, activeTab, setActiveTab }) {
     }
   };
 
-  if (loading && !stats) {
-    return (
-      <div style={{ padding: '80px 20px', textAlign: 'center' }}>
-        <RefreshCw size={36} className="spin" color="#8b5cf6" style={{ margin: '0 auto 16px' }} />
-        <h3 style={{ color: 'var(--text-primary)' }}>Loading Faculty Intelligence Dashboard...</h3>
-      </div>
-    );
-  }
-
   const pendingApps = applications.filter(a => a.status === 'Pending');
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px 20px' }}>
+      {loading && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
+          <RefreshCw size={14} className="spin" color="#8b5cf6" />
+          <span>Loading live faculty intelligence...</span>
+        </div>
+      )}
       
       {/* 1. Header & Stats Overview Banner */}
       <div className="glass-panel" style={{
@@ -367,6 +370,7 @@ export default function FacultyPortal({ faculty, activeTab, setActiveTab }) {
               )}
             </div>
           )}
+
         </div>
       )}
 

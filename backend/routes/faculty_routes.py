@@ -157,6 +157,107 @@ def upload_student_details():
         if workbook is not None:
             workbook.close()
 
+def student_detail_payload(row):
+    return {
+        'id': row[0],
+        'reg_number': row[1],
+        'name': row[2],
+        'department': row[3],
+        'course': row[4],
+        'year': row[5],
+        'semester': row[6],
+        'aadhaar_number': row[7],
+        'address': row[8],
+        'dob': str(row[9]) if row[9] is not None else '',
+        'father_name': row[10],
+        'mother_name': row[11],
+        'batch': row[12]
+    }
+
+
+@faculty_bp.route('/student-details', methods=['GET'])
+def list_student_details():
+    db = next(get_db())
+    try:
+        ensure_student_detail_columns(db)
+        rows = db.execute(text("""
+            SELECT id, reg_number, name, department, course, year, semester,
+                   aadhaar_number, address, dob, father_name, mother_name, batch
+            FROM students ORDER BY id ASC
+        """)).fetchall()
+        return jsonify({'success': True, 'students': [student_detail_payload(row) for row in rows]})
+    finally:
+        db.close()
+
+
+@faculty_bp.route('/student-details/<int:student_id>', methods=['PUT'])
+def update_student_details(student_id):
+    data = request.get_json() or {}
+    required = ['reg_number', 'name', 'department', 'course', 'year', 'semester']
+    if any(not str(data.get(field, '')).strip() for field in required):
+        return jsonify({'success': False, 'message': 'Registration Number, Name, Department, Course, Year, and Semester are required.'}), 400
+
+    db = next(get_db())
+    try:
+        ensure_student_detail_columns(db)
+        existing_student = db.execute(text('SELECT id FROM students WHERE id = :student_id'), {'student_id': student_id}).scalar()
+        if not existing_student:
+            return jsonify({'success': False, 'message': 'Student record not found.'}), 404
+        duplicate = db.execute(text("""
+            SELECT id FROM students
+            WHERE UPPER(reg_number) = UPPER(:reg_number) AND id != :student_id
+        """), {'reg_number': str(data['reg_number']).strip(), 'student_id': student_id}).scalar()
+        if duplicate:
+            return jsonify({'success': False, 'message': 'That Registration Number already exists.'}), 409
+
+        result = db.execute(text("""
+            UPDATE students SET
+                reg_number = :reg_number, name = :name, department = :department,
+                course = :course, year = :year, semester = :semester,
+                aadhaar_number = :aadhaar_number, address = :address, dob = :dob,
+                father_name = :father_name, mother_name = :mother_name, batch = :batch
+            WHERE id = :student_id
+        """), {
+            'student_id': student_id,
+            'reg_number': str(data['reg_number']).strip(),
+            'name': str(data['name']).strip(),
+            'department': str(data['department']).strip(),
+            'course': str(data['course']).strip(),
+            'year': int(data['year']),
+            'semester': int(data['semester']),
+            'aadhaar_number': clean_upload_value(data.get('aadhaar_number')),
+            'address': clean_upload_value(data.get('address')),
+            'dob': clean_upload_value(data.get('dob')),
+            'father_name': clean_upload_value(data.get('father_name')),
+            'mother_name': clean_upload_value(data.get('mother_name')),
+            'batch': clean_upload_value(data.get('batch'))
+        })
+        if result.rowcount != 1:
+            db.rollback()
+            return jsonify({'success': False, 'message': 'Student record not found.'}), 404
+        db.commit()
+        return jsonify({'success': True, 'message': 'Student details saved successfully.'})
+    except (TypeError, ValueError):
+        db.rollback()
+        return jsonify({'success': False, 'message': 'Year and Semester must be valid numbers.'}), 400
+    finally:
+        db.close()
+
+
+@faculty_bp.route('/student-details/<int:student_id>', methods=['DELETE'])
+def delete_student_details(student_id):
+    db = next(get_db())
+    try:
+        result = db.execute(text('DELETE FROM students WHERE id = :student_id'), {'student_id': student_id})
+        if result.rowcount != 1:
+            db.rollback()
+            return jsonify({'success': False, 'message': 'Student record not found.'}), 404
+        db.commit()
+        return jsonify({'success': True, 'message': 'Student details deleted successfully.'})
+    finally:
+        db.close()
+
+
 @faculty_bp.route('/dashboard-stats', methods=['GET'])
 def get_faculty_dashboard_stats():
     db = next(get_db())
