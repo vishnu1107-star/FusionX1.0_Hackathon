@@ -38,6 +38,12 @@ CREATE TABLE students (
     email VARCHAR(100),
     phone VARCHAR(20),
     mentor_name VARCHAR(100),
+    aadhaar_number VARCHAR(32),
+    address TEXT,
+    dob DATE,
+    father_name VARCHAR(100),
+    mother_name VARCHAR(100),
+    batch VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

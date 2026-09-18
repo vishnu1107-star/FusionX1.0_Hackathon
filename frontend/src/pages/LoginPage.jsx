@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, User, Award, BookOpen, AlertTriangle, CheckCircle, ArrowRight, Building } from 'lucide-react';
+import { ArrowRight, AlertTriangle, Building, Shield, User } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function LoginPage({ onLoginSuccess }) {
@@ -50,12 +50,8 @@ export default function LoginPage({ onLoginSuccess }) {
   };
 
   return (
-    <div style={{
+    <div className="login-page-subtle" style={{
       minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      alignItems: 'center',
       padding: '24px 16px',
       position: 'relative'
     }}>
@@ -80,7 +76,7 @@ export default function LoginPage({ onLoginSuccess }) {
         pointerEvents: 'none'
       }} />
 
-      <div className="glass-panel" style={{
+      <div className="glass-panel login-card-subtle" style={{
         maxWidth: '520px',
         width: '100%',
         padding: '36px',
@@ -89,7 +85,7 @@ export default function LoginPage({ onLoginSuccess }) {
         boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{
+          <div className="login-logo" style={{
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -102,7 +98,7 @@ export default function LoginPage({ onLoginSuccess }) {
           }}>
             <Shield size={34} color="#fff" />
           </div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.9rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          <h1 className="login-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.9rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             ARGUS <span style={{ color: 'var(--accent-blue)' }}>STUDENT 360</span>
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '6px' }}>
@@ -110,7 +106,7 @@ export default function LoginPage({ onLoginSuccess }) {
           </p>
         </div>
 
-        <div style={{
+        <div className="login-role-toggle" style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: '8px',
@@ -120,6 +116,7 @@ export default function LoginPage({ onLoginSuccess }) {
           marginBottom: '24px',
           border: '1px solid var(--border-color)'
         }}>
+          <span className={`login-role-pill ${activeTab === 'faculty' ? 'faculty' : ''}`} />
           <button type="button" className={`tab-btn ${activeTab === 'student' ? 'active' : ''}`} style={{ justifyContent: 'center' }} onClick={() => { setActiveTab('student'); setErrorMsg(''); }}>
             <User size={18} />
             <span>Student Login</span>
@@ -153,13 +150,13 @@ export default function LoginPage({ onLoginSuccess }) {
             <form onSubmit={handleStudentSubmit}>
               <div className="form-group">
                 <label className="form-label" htmlFor="regNumberInput">Enter Registration Number</label>
-                <input id="regNumberInput" type="text" className="form-input" placeholder="Enter your registration number" value={regNumber} onChange={(e) => setRegNumber(e.target.value)} autoFocus />
+                <input id="regNumberInput" type="text" className="form-input login-field" placeholder="Enter your registration number" value={regNumber} onChange={(e) => setRegNumber(e.target.value)} autoFocus />
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
                   Students sign in using only their official registration identifier.
                 </span>
               </div>
-              <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', marginTop: '8px', padding: '12px' }}>
-                {loading ? 'Analyzing Profile...' : 'Sign In as Student'}
+              <button type="submit" disabled={loading} className="btn btn-primary login-submit-button" style={{ width: '100%', marginTop: '8px', padding: '12px' }}>
+                {loading ? 'Analyzing...' : 'Sign In as Student'}
                 <ArrowRight size={18} />
               </button>
             </form>
@@ -169,13 +166,13 @@ export default function LoginPage({ onLoginSuccess }) {
             <form onSubmit={handleFacultySubmit}>
               <div className="form-group">
                 <label className="form-label" htmlFor="facultyIdInput">Faculty Advisor ID</label>
-                <input id="facultyIdInput" type="text" className="form-input" placeholder="e.g. FAC001" value={facultyId} onChange={(e) => setFacultyId(e.target.value)} />
+                <input id="facultyIdInput" type="text" className="form-input login-field" placeholder="e.g. FAC001" value={facultyId} onChange={(e) => setFacultyId(e.target.value)} />
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
                   Default Faculty: Dr. Arvind Swaminathan (Information Technology)
                 </span>
               </div>
-              <button type="submit" disabled={loading} className="btn btn-accent" style={{ width: '100%', marginTop: '8px', padding: '12px' }}>
-                {loading ? 'Authenticating...' : 'Enter Faculty Dashboard'}
+              <button type="submit" disabled={loading} className="btn btn-accent login-submit-button" style={{ width: '100%', marginTop: '8px', padding: '12px' }}>
+                {loading ? 'Analyzing...' : 'Enter Faculty Dashboard'}
                 <ArrowRight size={18} />
               </button>
             </form>

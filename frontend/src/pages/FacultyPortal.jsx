@@ -3,7 +3,7 @@ import {
   Users, AlertTriangle, CheckCircle, Clock, BookOpen, Send, 
   Calendar, FileText, Award, Eye, ThumbsUp, ThumbsDown, 
   RefreshCw, ShieldAlert, PlusCircle, ExternalLink, Check, X,
-  FileCheck, Sparkles, Filter, ChevronRight, ClipboardCheck
+  FileCheck, Sparkles, Filter, ChevronRight, ClipboardCheck, UploadCloud
 } from 'lucide-react';
 import { api } from '../services/api';
 import StudentReportModal from '../components/StudentReportModal';
@@ -35,6 +35,9 @@ export default function FacultyPortal({ faculty, activeTab, setActiveTab }) {
   });
   const [publishing, setPublishing] = useState(false);
   const [publishSuccessMsg, setPublishSuccessMsg] = useState('');
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadingDetails, setUploadingDetails] = useState(false);
+  const [uploadResult, setUploadResult] = useState(null);
 
   const loadFacultyData = async () => {
     setLoading(true);
@@ -67,6 +70,32 @@ export default function FacultyPortal({ faculty, activeTab, setActiveTab }) {
       console.error("Failed to load faculty data", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStudentDetailsUpload = async (event) => {
+    event.preventDefault();
+    if (!uploadFile) {
+      setUploadResult({ success: false, message: 'Select an .xlsx file before uploading.' });
+      return;
+    }
+
+    setUploadingDetails(true);
+    setUploadResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      const result = await api.uploadStudentDetails(formData);
+      setUploadResult(result);
+      if (result.success) {
+        setUploadFile(null);
+        event.target.reset();
+        await loadFacultyData();
+      }
+    } catch (error) {
+      setUploadResult({ success: false, message: 'Unable to connect to the upload service.' });
+    } finally {
+      setUploadingDetails(false);
     }
   };
 
@@ -296,6 +325,50 @@ export default function FacultyPortal({ faculty, activeTab, setActiveTab }) {
           </div>
         )}
       </div>
+
+      {activeTab === 'upload_details' && (
+        <div className="glass-panel" style={{ padding: '28px', maxWidth: '820px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '22px' }}>
+            <UploadCloud size={28} color="var(--accent-blue)" />
+            <div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>Upload Student Details</h3>
+              <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                Append new student records using the fixed 12-column Excel template.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ padding: '18px', marginBottom: '20px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', background: 'var(--bg-secondary)' }}>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              Required order: Registration Number, Name, Aadhaar Number, Address, DOB, Father's Name, Mother's Name, Batch, Year, Semester, Course, Department.
+            </p>
+          </div>
+
+          <form onSubmit={handleStudentDetailsUpload}>
+            <label className="form-label" htmlFor="studentDetailsFile">Excel file (.xlsx)</label>
+            <input id="studentDetailsFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="form-input" onChange={(event) => setUploadFile(event.target.files?.[0] || null)} />
+            <button type="submit" disabled={uploadingDetails} className="btn btn-primary" style={{ width: '100%', marginTop: '16px', padding: '12px' }}>
+              <UploadCloud size={17} />
+              {uploadingDetails ? 'Uploading Details...' : 'Upload Excel Details'}
+            </button>
+          </form>
+
+          {uploadResult && (
+            <div style={{ marginTop: '20px', padding: '16px', borderRadius: 'var(--radius-md)', border: `1px solid ${uploadResult.success ? '#86efac' : '#fca5a5'}`, background: uploadResult.success ? '#f0fdf4' : '#fef2f2', color: uploadResult.success ? '#166534' : '#991b1b' }}>
+              <strong>{uploadResult.message}</strong>
+              {uploadResult.summary && <div style={{ marginTop: '7px', fontSize: '0.82rem' }}>Processed: {uploadResult.summary.processed} | Added: {uploadResult.summary.added} | Skipped: {uploadResult.summary.skipped}</div>}
+              {uploadResult.skipped_rows?.length > 0 && (
+                <div style={{ marginTop: '12px', fontSize: '0.8rem' }}>
+                  <strong>Skipped rows</strong>
+                  <ul style={{ margin: '6px 0 0 18px' }}>
+                    {uploadResult.skipped_rows.map((item, index) => <li key={`${item.row}-${index}`}>Row {item.row}{item.registration_number ? ` (${item.registration_number})` : ''}: {item.reason}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* TAB CONTENT 1: RANKED STUDENT RISK WATCHLIST */}
       {activeTab === 'watchlist' && (

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Activity, Award, BarChart3, BookOpen, Calendar, ChevronLeft, ChevronRight,
-  ClipboardCheck, FileCheck, LogOut, Menu, Send, Shield, ShieldAlert, X
+  ClipboardCheck, FileCheck, LogOut, Menu, Send, Shield, ShieldAlert, UploadCloud, X
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -19,7 +19,8 @@ const facultyItems = [
   { id: 'applications', label: 'OD & Leave Management', icon: Activity, countKey: 'applications' },
   { id: 'class_updates', label: 'General Class Updates', icon: BookOpen, countKey: 'updates' },
   { id: 'extracurricular', label: 'Extracurricular Verification', icon: Award, countKey: 'extracurricular' },
-  { id: 'attendance', label: 'Attendance', icon: ClipboardCheck }
+  { id: 'attendance', label: 'Attendance', icon: ClipboardCheck },
+  { id: 'upload_details', label: 'Upload Details', icon: UploadCloud }
 ];
 
 export default function Navbar({ user, role, onLogout, activeTab, setActiveTab, collapsed, setCollapsed }) {

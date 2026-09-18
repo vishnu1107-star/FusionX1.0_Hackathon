@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 
 import io
 import datetime
+import openpyxl
 from flask import send_file
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -9,12 +10,152 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from db import get_db
 from ml.model import risk_predictor
 from ml.intervention import intervention_engine
 
 faculty_bp = Blueprint('faculty', __name__)
+
+STUDENT_DETAIL_COLUMNS = [
+    ('aadhaar_number', 'VARCHAR(32)'),
+    ('address', 'TEXT'),
+    ('dob', 'DATE'),
+    ('father_name', 'VARCHAR(100)'),
+    ('mother_name', 'VARCHAR(100)'),
+    ('batch', 'VARCHAR(50)'),
+]
+
+
+def ensure_student_detail_columns(db):
+    """Add optional upload fields without changing existing student rows."""
+    existing = {column['name'] for column in inspect(db.bind).get_columns('students')}
+    for column_name, column_type in STUDENT_DETAIL_COLUMNS:
+        if column_name not in existing:
+            db.execute(text(f"ALTER TABLE students ADD COLUMN {column_name} {column_type}"))
+    if any(column_name not in existing for column_name, _ in STUDENT_DETAIL_COLUMNS):
+        db.commit()
+
+
+def clean_upload_value(value):
+    if value is None:
+        return None
+    value = str(value).strip()
+    return value or None
+
+
+def format_upload_date(value):
+    if value is None:
+        return None
+    if isinstance(value, (datetime.datetime, datetime.date)):
+        return value.strftime('%Y-%m-%d')
+    return str(value).strip() or None
+
+
+@faculty_bp.route('/upload-details', methods=['POST'])
+def upload_student_details():
+    upload = request.files.get('file')
+    if not upload or not upload.filename:
+        return jsonify({'success': False, 'message': 'Please select an Excel (.xlsx) file.'}), 400
+    if not upload.filename.lower().endswith('.xlsx'):
+        return jsonify({'success': False, 'message': 'Only .xlsx Excel files are supported.'}), 400
+
+    expected_headers = [
+        'registration number', 'name', 'aadhaar number', 'address', 'dob',
+        "father's name", "mother's name", 'batch', 'year', 'semester',
+        'course', 'department'
+    ]
+
+    workbook = None
+    try:
+        workbook = openpyxl.load_workbook(upload, read_only=True, data_only=True)
+        worksheet = workbook.active
+        rows = worksheet.iter_rows(values_only=True)
+        header = next(rows, None)
+        actual_headers = [str(value).strip().lower() if value is not None else '' for value in (header or ())]
+        if actual_headers != expected_headers:
+            workbook.close()
+            return jsonify({
+                'success': False,
+                'message': 'Invalid Excel columns. Use the required A-L template in the exact order.',
+                'expected_columns': expected_headers,
+                'received_columns': actual_headers
+            }), 400
+    except Exception as error:
+        if workbook is not None:
+            workbook.close()
+        return jsonify({'success': False, 'message': f'Unable to read the Excel file: {error}'}), 400
+
+    db = next(get_db())
+    added = 0
+    skipped = []
+    processed = 0
+    try:
+        ensure_student_detail_columns(db)
+        for row_number, row in enumerate(rows, start=2):
+            values = list(row)[:12]
+            if not any(clean_upload_value(value) for value in values):
+                continue
+            processed += 1
+
+            registration_number = clean_upload_value(values[0] if len(values) > 0 else None)
+            student_name = clean_upload_value(values[1] if len(values) > 1 else None)
+            if not registration_number:
+                skipped.append({'row': row_number, 'reason': 'Missing Registration Number'})
+                continue
+            if not student_name:
+                skipped.append({'row': row_number, 'reason': 'Missing Name', 'registration_number': registration_number})
+                continue
+
+            existing = db.execute(
+                text('SELECT id FROM students WHERE UPPER(reg_number) = UPPER(:reg_number)'),
+                {'reg_number': registration_number}
+            ).scalar()
+            if existing:
+                skipped.append({'row': row_number, 'reason': 'Duplicate Registration Number', 'registration_number': registration_number})
+                continue
+
+            try:
+                db.execute(text("""
+                    INSERT INTO students (
+                        reg_number, name, department, course, year, semester,
+                        aadhaar_number, address, dob, father_name, mother_name, batch
+                    ) VALUES (
+                        :reg_number, :name, :department, :course, :year, :semester,
+                        :aadhaar_number, :address, :dob, :father_name, :mother_name, :batch
+                    )
+                """), {
+                    'reg_number': registration_number,
+                    'name': student_name,
+                    'aadhaar_number': clean_upload_value(values[2] if len(values) > 2 else None),
+                    'address': clean_upload_value(values[3] if len(values) > 3 else None),
+                    'dob': format_upload_date(values[4] if len(values) > 4 else None),
+                    'father_name': clean_upload_value(values[5] if len(values) > 5 else None),
+                    'mother_name': clean_upload_value(values[6] if len(values) > 6 else None),
+                    'batch': clean_upload_value(values[7] if len(values) > 7 else None),
+                    'year': int(values[8]) if len(values) > 8 and str(values[8]).strip().isdigit() else 0,
+                    'semester': int(values[9]) if len(values) > 9 and str(values[9]).strip().isdigit() else 0,
+                    'course': clean_upload_value(values[10] if len(values) > 10 else None) or 'Unknown',
+                    'department': clean_upload_value(values[11] if len(values) > 11 else None) or 'Unknown'
+                })
+                added += 1
+            except Exception as error:
+                skipped.append({'row': row_number, 'reason': f'Invalid database row: {error}', 'registration_number': registration_number})
+
+        db.commit()
+        return jsonify({
+            'success': True,
+            'message': f'{added} student record(s) added successfully.',
+            'summary': {'processed': processed, 'added': added, 'skipped': len(skipped)},
+            'skipped_rows': skipped
+        })
+    except Exception as error:
+        db.rollback()
+        return jsonify({'success': False, 'message': f'Upload failed without changing existing records: {error}'}), 500
+    finally:
+        db.close()
+        if workbook is not None:
+            workbook.close()
 
 @faculty_bp.route('/dashboard-stats', methods=['GET'])
 def get_faculty_dashboard_stats():
@@ -247,9 +388,9 @@ def download_student_report_pdf(reg_number):
     from flask import current_app
     with current_app.test_request_context():
         resp = get_student_full_report(reg_number)
-        if resp[1] != 200:
+        if resp.status_code != 200:
             return jsonify({'success': False, 'message': 'Student not found'}), 404
-        data = resp[0].json['data']
+        data = resp.get_json()['data']
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter)

@@ -88,6 +88,14 @@ export const api = {
     return res.json();
   },
 
+  uploadStudentDetails: async (formData) => {
+    const res = await fetch(`${BASE_URL}/faculty/upload-details`, {
+      method: 'POST',
+      body: formData
+    });
+    return res.json();
+  },
+
   getStudentFullReport: async (regNumber) => {
     const res = await fetch(`${BASE_URL}/faculty/student/${regNumber}/report`);
     return res.json();

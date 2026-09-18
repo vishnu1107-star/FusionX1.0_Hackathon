@@ -166,7 +166,7 @@ export default function StudentReportModal({ student, onClose }) {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {reportData.academic.risk_factors && reportData.academic.risk_factors.map((factor, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: '#e2e8f0' }}>
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: '#0f172a' }}>
                     <span style={{ color: isHighRisk ? '#f87171' : isMedRisk ? '#fcd34d' : '#34d399' }}>•</span>
                     <span>{factor}</span>
                   </div>
