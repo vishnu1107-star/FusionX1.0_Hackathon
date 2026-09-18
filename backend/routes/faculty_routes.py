@@ -1,4 +1,14 @@
 from flask import Blueprint, request, jsonify
+
+import io
+import datetime
+from flask import send_file
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
 from sqlalchemy import text
 from db import get_db
 from ml.model import risk_predictor
@@ -130,3 +140,216 @@ def get_risk_watchlist():
         })
     finally:
         db.close()
+
+
+@faculty_bp.route('/student/<reg_number>/report', methods=['GET'])
+def get_student_full_report(reg_number):
+    db = next(get_db())
+    try:
+        # 1. Profile
+        student = db.execute(text("SELECT * FROM students WHERE reg_number = :reg"), {'reg': reg_number}).fetchone()
+        if not student:
+            return jsonify({'success': False, 'message': 'Student not found'}), 404
+        
+        student_id = student[0]
+        
+        profile = {
+            'reg_number': student[1],
+            'name': student[2],
+            'department': student[3],
+            'course': student[4],
+            'year': student[5],
+            'semester': student[6],
+            'section': student[7],
+            'email': student[8],
+            'phone': student[9],
+            'mentor_name': student[10]
+        }
+
+        # 2. Academic & Risk (We'll use risk_predictor and intervention_engine directly)
+        acad_row = db.execute(text("SELECT * FROM academic_records WHERE student_id = :sid"), {'sid': student_id}).fetchone()
+        acad = {
+            'attendance_pct': float(acad_row[2]) if acad_row and acad_row[2] is not None else 75.0,
+            'avg_test_score': float(acad_row[3]) if acad_row and acad_row[3] is not None else 70.0,
+            'avg_assignment_score': float(acad_row[4]) if acad_row and acad_row[4] is not None else 75.0,
+            'submission_delays': int(acad_row[5]) if acad_row and acad_row[5] is not None else 0,
+            'performance_trend': acad_row[6] if acad_row and acad_row[6] else 'Stable',
+            'math_score': float(acad_row[7] if acad_row and acad_row[7] else 70.0),
+            'dbms_score': float(acad_row[8] if acad_row and acad_row[8] else 70.0),
+            'os_score': float(acad_row[9] if acad_row and acad_row[9] else 70.0),
+            'dsa_score': float(acad_row[10] if acad_row and acad_row[10] else 70.0)
+        }
+        pred = risk_predictor.predict_risk(acad)
+        interventions = intervention_engine.generate_intervention_plan(acad, pred)
+
+        academic_summary = {**acad, **pred, 'interventions': interventions['action_items']}
+
+        # 3. OD Applications
+        ods = db.execute(text("SELECT * FROM od_applications WHERE student_id = :sid"), {'sid': student_id}).fetchall()
+        od_list = []
+        od_days_total = 0
+        for od in ods:
+            d1 = datetime.datetime.strptime(od[2], '%Y-%m-%d')
+            d2 = datetime.datetime.strptime(od[3], '%Y-%m-%d')
+            days = (d2 - d1).days + 1
+            if od[8] == 'Approved':
+                od_days_total += days
+            od_list.append({
+                'from_date': od[2],
+                'to_date': od[3],
+                'purpose': od[4],
+                'status': od[8],
+                'days': days
+            })
+
+        # 4. Leave Applications
+        leaves = db.execute(text("SELECT * FROM leave_applications WHERE student_id = :sid"), {'sid': student_id}).fetchall()
+        leave_list = []
+        leave_days_total = 0
+        for lv in leaves:
+            d1 = datetime.datetime.strptime(lv[2], '%Y-%m-%d')
+            d2 = datetime.datetime.strptime(lv[3], '%Y-%m-%d')
+            days = (d2 - d1).days + 1
+            if lv[6] == 'Approved':
+                leave_days_total += days
+            leave_list.append({
+                'from_date': lv[2],
+                'to_date': lv[3],
+                'purpose': lv[4],
+                'status': lv[6],
+                'days': days
+            })
+
+        # 5. Extracurriculars
+        extras = db.execute(text("SELECT * FROM extracurricular_activities WHERE student_id = :sid"), {'sid': student_id}).fetchall()
+        extra_list = [{'type': e[2], 'event_name': e[3], 'date': e[4], 'status': e[8]} for e in extras]
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'profile': profile,
+                'academic': academic_summary,
+                'od_summary': {'total_approved_days': od_days_total, 'details': od_list},
+                'leave_summary': {'total_approved_days': leave_days_total, 'details': leave_list},
+                'extracurriculars': extra_list
+            }
+        })
+    except Exception as e:
+        print("Error fetching report:", e)
+        return jsonify({'success': False, 'message': 'Failed to generate report'}), 500
+    finally:
+        db.close()
+
+
+@faculty_bp.route('/student/<reg_number>/report/pdf', methods=['GET'])
+def download_student_report_pdf(reg_number):
+    # Reuse the json endpoint logic to gather data
+    from flask import current_app
+    with current_app.test_request_context():
+        resp = get_student_full_report(reg_number)
+        if resp[1] != 200:
+            return jsonify({'success': False, 'message': 'Student not found'}), 404
+        data = resp[0].json['data']
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Custom Styles
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], alignment=1, spaceAfter=20)
+    heading_style = ParagraphStyle('Heading', parent=styles['Heading2'], spaceBefore=15, spaceAfter=10, textColor=colors.HexColor('#2c3e50'))
+    normal_style = styles['Normal']
+
+    # 1. Header
+    elements.append(Paragraph(f"Comprehensive Student Report", title_style))
+    elements.append(Paragraph(f"<b>Student Name:</b> {data['profile']['name']}  |  <b>Reg No:</b> {data['profile']['reg_number']}", normal_style))
+    elements.append(Paragraph(f"<b>Department:</b> {data['profile']['department']}  |  <b>Year/Sem:</b> {data['profile']['year']}/{data['profile']['semester']}", normal_style))
+    elements.append(Spacer(1, 20))
+
+    # 2. Academic Performance
+    elements.append(Paragraph("Academic Diagnostics", heading_style))
+    acad = data['academic']
+    acad_data = [
+        ['Metric', 'Value'],
+        ['Attendance', f"{acad['attendance_pct']}%"],
+        ['Avg Test Score', f"{acad['avg_test_score']}%"],
+        ['Assignment Score', f"{acad['avg_assignment_score']}%"],
+        ['Submission Delays', f"{acad['submission_delays']} delays"],
+        ['Performance Trend', acad['performance_trend']],
+        ['Risk Level', acad['risk_level']],
+        ['Risk Score', f"{acad['risk_score']}/100"]
+    ]
+    t = Table(acad_data, colWidths=[200, 200])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (1,0), colors.HexColor('#34495e')),
+        ('TEXTCOLOR', (0,0), (1,0), colors.whitesmoke),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0,0), (-1,0), 12),
+        ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#ecf0f1')),
+        ('GRID', (0,0), (-1,-1), 1, colors.white)
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 20))
+
+    # 3. OD & Leave Summary
+    elements.append(Paragraph("OD & Leave Summary", heading_style))
+    od_lv_data = [
+        ['Type', 'Total Approved Days'],
+        ['On Duty (OD)', str(data['od_summary']['total_approved_days'])],
+        ['Leave', str(data['leave_summary']['total_approved_days'])]
+    ]
+    t2 = Table(od_lv_data, colWidths=[200, 200])
+    t2.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (1,0), colors.HexColor('#8b5cf6')),
+        ('TEXTCOLOR', (0,0), (1,0), colors.whitesmoke),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0,0), (-1,0), 12),
+        ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#f3f4f6')),
+        ('GRID', (0,0), (-1,-1), 1, colors.white)
+    ]))
+    elements.append(t2)
+    elements.append(Spacer(1, 20))
+
+    # 4. Extracurriculars
+    elements.append(Paragraph("Extracurricular Activities", heading_style))
+    if data['extracurriculars']:
+        ex_data = [['Type', 'Event', 'Date', 'Status']]
+        for ex in data['extracurriculars']:
+            ex_data.append([ex['type'], ex['event_name'], ex['date'], ex['status']])
+        t3 = Table(ex_data, colWidths=[100, 150, 80, 70])
+        t3.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#3b82f6')),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 12),
+            ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#f3f4f6')),
+            ('GRID', (0,0), (-1,-1), 1, colors.white)
+        ]))
+        elements.append(t3)
+    else:
+        elements.append(Paragraph("No extracurricular activities recorded.", normal_style))
+    
+    elements.append(Spacer(1, 20))
+
+    # 5. Risk Factors & Interventions
+    elements.append(Paragraph("Risk Factors & Action Items", heading_style))
+    for factor in acad.get('risk_factors', []):
+        elements.append(Paragraph(f"- {factor}", normal_style))
+    
+    elements.append(Spacer(1, 10))
+    for item in acad.get('interventions', []):
+        elements.append(Paragraph(f"<b>[{item['priority']}] {item['title']}</b>: {item['recommendation']}", normal_style))
+
+    doc.build(elements)
+    buffer.seek(0)
+    
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"Student_Report_{reg_number}.pdf",
+        mimetype='application/pdf'
+    )
