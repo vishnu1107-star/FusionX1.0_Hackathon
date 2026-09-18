@@ -36,6 +36,14 @@ def create_app():
     def serve_uploaded_file(filename):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+    # Root Endpoint
+    @app.route('/', methods=['GET'])
+    def root_health():
+        return jsonify({
+            'status': 'ok',
+            'message': 'EduShield AI Backend is running'
+        })
+
     # Health Check
     @app.route('/api/health', methods=['GET'])
     def health_check():
