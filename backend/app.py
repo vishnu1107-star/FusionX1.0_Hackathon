@@ -68,4 +68,4 @@ if __name__ == '__main__':
     print(f"==================================================")
     print(f"  EduShield AI Backend API Server Starting on http://127.0.0.1:{port}")
     print(f"==================================================")
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=True)

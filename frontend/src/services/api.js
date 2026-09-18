@@ -88,6 +88,15 @@ export const api = {
     return res.json();
   },
 
+  getStudentFullReport: async (regNumber) => {
+    const res = await fetch(`${BASE_URL}/faculty/student/${regNumber}/report`);
+    return res.json();
+  },
+
+  downloadStudentReportPdf: (regNumber) => {
+    window.open(`${BASE_URL}/faculty/student/${regNumber}/report/pdf`, '_blank');
+  },
+
   // General Class Updates
   getClassUpdates: async () => {
     const res = await fetch(`${BASE_URL}/class-updates/all`);
