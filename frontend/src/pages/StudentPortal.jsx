@@ -3,7 +3,7 @@ import {
   BarChart3, AlertCircle, CheckCircle2, Clock, BookOpen, Send, 
   Calendar, FileText, Award, Download, UserCheck, ShieldAlert, 
   TrendingUp, TrendingDown, ArrowUpRight, CheckCircle, RefreshCw,
-  ExternalLink, UploadCloud, FileCheck, Layers
+  ExternalLink, UploadCloud, FileCheck, Layers, Activity
 } from 'lucide-react';
 import { api } from '../services/api';
 
