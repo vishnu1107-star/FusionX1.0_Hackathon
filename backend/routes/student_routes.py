@@ -29,51 +29,46 @@ def get_student_dashboard(reg_number):
             'course': student_row[4],
             'year': student_row[5],
             'semester': student_row[6],
-            'email': student_row[7],
-            'phone': student_row[8],
-            'mentor_name': student_row[9]
+            'email': student_row[7] if student_row[7] else '',
+            'phone': student_row[8] if student_row[8] else '',
+            'mentor_name': student_row[9] if student_row[9] else 'Faculty Advisor'
         }
 
         # 2. Fetch Academic Summary
         acad_query = text("""
             SELECT attendance_pct, avg_test_score, avg_assignment_score, submission_delays,
-                   performance_trend, math_score, dbms_score, os_score, dsa_score
+                   performance_trend
             FROM academic_records WHERE student_id = :sid
         """)
         acad_row = db.execute(acad_query, {'sid': student_id}).fetchone()
         
-        if acad_row:
+        if acad_row and acad_row[0] is not None and acad_row[1] is not None:
             academic_data = {
                 'attendance_pct': float(acad_row[0]),
                 'avg_test_score': float(acad_row[1]),
                 'avg_assignment_score': float(acad_row[2]),
                 'submission_delays': int(acad_row[3]),
-                'performance_trend': acad_row[4],
-                'math_score': float(acad_row[5] or 0),
-                'dbms_score': float(acad_row[6] or 0),
-                'os_score': float(acad_row[7] or 0),
-                'dsa_score': float(acad_row[8] or 0),
+                'performance_trend': acad_row[4] or 'Stable',
                 'mentor_name': student_info['mentor_name']
             }
+            # 3. Compute Real-time ML Risk Prediction & Explanations
+            risk_result = risk_predictor.predict_risk(academic_data)
+            # 4. Generate Personalized Actionable Interventions
+            interventions = intervention_engine.generate_intervention_plan(academic_data, risk_result)
         else:
-            academic_data = {
-                'attendance_pct': 75.0,
-                'avg_test_score': 65.0,
-                'avg_assignment_score': 70.0,
-                'submission_delays': 0,
-                'performance_trend': 'Stable',
-                'math_score': 65.0,
-                'dbms_score': 65.0,
-                'os_score': 65.0,
-                'dsa_score': 65.0,
-                'mentor_name': student_info['mentor_name']
+            academic_data = None
+            risk_result = {
+                'risk_score': 0,
+                'risk_level': 'Insufficient Data',
+                'risk_factors': ['Insufficient data for prediction'],
+                'confidence': 0.0,
+                'metrics_breakdown': {}
             }
-
-        # 3. Compute Real-time ML Risk Prediction & Explanations
-        risk_result = risk_predictor.predict_risk(academic_data)
-
-        # 4. Generate Personalized Actionable Interventions
-        interventions = intervention_engine.generate_intervention_plan(academic_data, risk_result)
+            interventions = {
+                'summary': 'Upload academic performance data to generate risk diagnostics.',
+                'action_items': [],
+                'mentor_alerted': False
+            }
 
         # 5. Fetch Detailed Tests
         tests_query = text("""

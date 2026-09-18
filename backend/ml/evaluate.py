@@ -1,6 +1,7 @@
 """
 EduShield AI - Independent Model Evaluation Script
 Evaluates the pre-trained Random Forest model on the separate testing dataset.
+Strict scientific evaluation: zero synthetic label generation.
 """
 
 import os
@@ -21,14 +22,6 @@ MODEL_PATH = os.path.join(BASE_DIR, 'artifacts', 'risk_model.joblib')
 TREND_MAP = {'Declining': 0, 'Fluctuating': 1, 'Stable': 2, 'Improving': 3}
 RISK_MAP = {'LOW': 0, 'MEDIUM': 1, 'HIGH': 2}
 RISK_MAP_REV = {0: 'LOW', 1: 'MEDIUM', 2: 'HIGH'}
-
-def calc_ground_truth(att, test, assign, delay):
-    if att < 65 or test < 40 or assign < 40 or delay > 5:
-        return 'HIGH'
-    elif att < 80 or test < 60 or assign < 60 or delay > 2:
-        return 'MEDIUM'
-    else:
-        return 'LOW'
 
 def evaluate():
     print("=" * 75)
@@ -57,6 +50,11 @@ def evaluate():
     ws = wb.active
     rows = list(ws.iter_rows(values_only=True))
 
+    header = rows[0] if rows else None
+    has_risk_level = False
+    if header:
+        has_risk_level = any(str(h).strip().lower() == 'risk_level' for h in header if h is not None)
+
     raw_count = len(rows) - 1 if len(rows) > 0 else 0
     valid_records = []
     invalid_count = 0
@@ -81,8 +79,9 @@ def evaluate():
             invalid_count += 1
             continue
 
-        actual_risk = r[6] if len(r) > 6 and r[6] is not None else calc_ground_truth(att, test, assign, delay)
-        actual_risk = str(actual_risk).strip().upper()
+        actual_risk = None
+        if has_risk_level and len(r) > 6 and r[6] is not None:
+            actual_risk = str(r[6]).strip().upper()
 
         test_regs.add(reg)
         valid_records.append({
@@ -118,35 +117,25 @@ def evaluate():
         pred_label = RISK_MAP_REV[pred_idx]
         confidence = float(np.max(probs))
 
-        y_true.append(RISK_MAP[item['actual_risk']])
-        y_pred.append(pred_idx)
+        if item['actual_risk'] is not None and item['actual_risk'] in RISK_MAP:
+            y_true.append(RISK_MAP[item['actual_risk']])
+            y_pred.append(pred_idx)
 
         results.append({
             'Registration Number': item['reg_number'],
-            'Actual Risk': item['actual_risk'],
+            'Actual Risk': item['actual_risk'] if item['actual_risk'] is not None else "MISSING",
             'Predicted Risk': pred_label,
             'Confidence': f"{confidence:.2f}",
-            'Match': item['actual_risk'] == pred_label
+            'Match': item['actual_risk'] == pred_label if item['actual_risk'] is not None else False
         })
-
-    df_res = pd.DataFrame(results)
-    correct_count = int(df_res['Match'].sum())
-    incorrect_count = len(df_res) - correct_count
-
-    # 5. Calculate Metrics
-    acc = accuracy_score(y_true, y_pred)
-    prec, rec, f1, _ = precision_recall_fscore_support(y_true, y_pred, average='weighted', zero_division=0)
-    cm = confusion_matrix(y_true, y_pred, labels=[0, 1, 2])
-    cls_report = classification_report(y_true, y_pred, target_names=['LOW', 'MEDIUM', 'HIGH'], output_dict=True, zero_division=0)
 
     # Print Student-Level Output
     print("\nSTUDENT-LEVEL EVALUATION RESULTS:")
     print("-" * 75)
-    print(f"{'Registration Number':<22} | {'Actual Risk':<12} | {'Predicted Risk':<14} | {'Confidence':<10} | {'Status'}")
+    print(f"{'Registration Number':<22} | {'Actual Risk':<12} | {'Predicted Risk':<14} | {'Confidence':<10}")
     print("-" * 75)
     for r in results:
-        status = "CORRECT" if r['Match'] else "MISMATCH"
-        print(f"{r['Registration Number']:<22} | {r['Actual Risk']:<12} | {r['Predicted Risk']:<14} | {r['Confidence']:<10} | {status}")
+        print(f"{r['Registration Number']:<22} | {r['Actual Risk']:<12} | {r['Predicted Risk']:<14} | {r['Confidence']:<10}")
     print("-" * 75)
 
     # Print Summary Report
@@ -159,23 +148,19 @@ def evaluate():
     print(f"6.  Exact 5 ML Input Features:        ['attendance_percentage', 'test_average', 'assignment_average', 'submission_delay_count', 'performance_trend']")
     print(f"7.  Target Column:                    'risk_level'")
     print(f"8.  Model Artifact Used:              {MODEL_PATH}")
-    print(f"9.  Overall Accuracy:                 {acc:.4f} ({acc*100:.2f}%)")
-    print(f"10. Weighted Precision:               {prec:.4f}")
-    print(f"11. Weighted Recall:                  {rec:.4f}")
-    print(f"12. Weighted F1-Score:                {f1:.4f}")
-    print("\n13. Per-Class Results:")
-    for cname in ['LOW', 'MEDIUM', 'HIGH']:
-        c_stats = cls_report.get(cname, {})
-        print(f"    - Class {cname:<6}: Precision = {c_stats.get('precision', 0):.4f}, Recall = {c_stats.get('recall', 0):.4f}, F1 = {c_stats.get('f1-score', 0):.4f}, Support = {int(c_stats.get('support', 0))}")
-    
-    print("\n14. Confusion Matrix (Rows=Actual, Cols=Predicted [LOW, MEDIUM, HIGH]):")
-    print(cm)
-    print(f"\n15. Correct Predictions:              {correct_count} / {len(valid_records)}")
-    print(f"16. Incorrect Predictions:            {incorrect_count} / {len(valid_records)}")
-    print("17. Testing records used for training: NO (0 testing records were in training)")
-    print("18. `risk_level` used as input feature: NO (`risk_level` was ground-truth only)")
-    print("19. Synthetic / demo records used:    NO (Zero synthetic or demo records)")
-    print("=" * 75)
+
+    if has_risk_level and len(y_true) == len(valid_records):
+        acc = accuracy_score(y_true, y_pred)
+        prec, rec, f1, _ = precision_recall_fscore_support(y_true, y_pred, average='weighted', zero_division=0)
+        cm = confusion_matrix(y_true, y_pred, labels=[0, 1, 2])
+        print(f"9.  Overall Accuracy:                 {acc:.4f} ({acc*100:.2f}%)")
+        print(f"10. Weighted Precision:               {prec:.4f}")
+        print(f"11. Weighted Recall:                  {rec:.4f}")
+        print(f"12. Weighted F1-Score:                {f1:.4f}")
+        print("\n13. Confusion Matrix:")
+        print(cm)
+    else:
+        print("\n[ALERT]: Testing dataset is missing the ground-truth risk_level column. Model evaluation cannot be performed.")
 
 if __name__ == '__main__':
     evaluate()
