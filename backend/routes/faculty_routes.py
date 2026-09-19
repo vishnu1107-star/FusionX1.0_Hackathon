@@ -1,7 +1,9 @@
-from flask import Blueprint, request, jsonify, send_file
+from flask import Blueprint, request, jsonify
+
 import io
 import datetime
 import openpyxl
+from flask import send_file
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib import colors
@@ -24,6 +26,7 @@ STUDENT_DETAIL_COLUMNS = [
     ('batch', 'VARCHAR(50)'),
 ]
 
+
 def ensure_student_detail_columns(db):
     """Add optional upload fields without changing existing student rows."""
     existing = {column['name'] for column in inspect(db.bind).get_columns('students')}
@@ -33,11 +36,13 @@ def ensure_student_detail_columns(db):
     if any(column_name not in existing for column_name, _ in STUDENT_DETAIL_COLUMNS):
         db.commit()
 
+
 def clean_upload_value(value):
     if value is None:
         return None
     value = str(value).strip()
     return value or None
+
 
 def format_upload_date(value):
     if value is None:
@@ -45,6 +50,7 @@ def format_upload_date(value):
     if isinstance(value, (datetime.datetime, datetime.date)):
         return value.strftime('%Y-%m-%d')
     return str(value).strip() or None
+
 
 @faculty_bp.route('/upload-details', methods=['POST'])
 def upload_student_details():
@@ -54,204 +60,112 @@ def upload_student_details():
     if not upload.filename.lower().endswith('.xlsx'):
         return jsonify({'success': False, 'message': 'Only .xlsx Excel files are supported.'}), 400
 
+    expected_headers = [
+        'registration number', 'attendance_percentage', 'test_average', 
+        'assignment_average', 'submission_delay_count', 'performance_trend'
+    ]
+
     workbook = None
     try:
-        workbook = openpyxl.load_workbook(upload, read_only=False, data_only=True)
+        workbook = openpyxl.load_workbook(upload, read_only=True, data_only=True)
         worksheet = workbook.active
-        rows = list(worksheet.iter_rows(values_only=True))
-        if not rows:
+        rows = worksheet.iter_rows(values_only=True)
+        header = next(rows, None)
+        actual_headers = [str(value).strip().lower() if value is not None else '' for value in (header or ())]
+        
+        # We only care if the first 6 columns match expected_headers (allow trailing columns like risk_level if any)
+        if actual_headers[:6] != expected_headers:
             workbook.close()
-            return jsonify({'success': False, 'message': 'The uploaded Excel file is empty.'}), 400
+            return jsonify({
+                'success': False,
+                'message': 'Invalid Excel columns. Use the academic data template in the exact order.',
+                'expected_columns': expected_headers,
+                'received_columns': actual_headers
+            }), 400
     except Exception as error:
         if workbook is not None:
             workbook.close()
         return jsonify({'success': False, 'message': f'Unable to read the Excel file: {error}'}), 400
 
-    raw_headers = [str(value).strip().lower() if value is not None else '' for value in rows[0]]
-
-    def find_col(aliases):
-        for alias in aliases:
-            for idx, h in enumerate(raw_headers):
-                if h and alias in h:
-                    return idx
-        return None
-
-    # Detect column indices
-    reg_idx = find_col(['registration number', 'registration_number', 'reg_number', 'reg number', 'reg. number', 'registration', 'student_id', 'student id'])
-    att_idx = find_col(['attendance_percentage', 'attendance_pct', 'attendance', 'attendence'])
-    test_idx = find_col(['test_average', 'avg_test_score', 'test_score', 'test average', 'test'])
-    assign_idx = find_col(['assignment_average', 'avg_assignment_score', 'assignment_score', 'assignment average', 'assignment'])
-    delay_idx = find_col(['submission_delay_count', 'submission_delays', 'delay_count', 'delays'])
-    trend_idx = find_col(['performance_trend', 'trend'])
-
-    # Profile detail columns
-    name_idx = find_col(['name', 'student_name', 'student name'])
-    dept_idx = find_col(['department', 'dept'])
-    course_idx = find_col(['course'])
-    year_idx = find_col(['year'])
-    sem_idx = find_col(['semester', 'sem'])
-    aadhaar_idx = find_col(['aadhaar number', 'aadhaar_number', 'aadhaar'])
-    address_idx = find_col(['address'])
-    dob_idx = find_col(['dob', 'date of birth'])
-    father_idx = find_col(["father's name", 'father_name', 'father name'])
-    mother_idx = find_col(["mother's name", 'mother_name', 'mother name'])
-    batch_idx = find_col(['batch'])
-
-    if reg_idx is None:
-        # Fallback to col 0 if non-empty
-        reg_idx = 0
-
     db = next(get_db())
+    added_or_updated = 0
+    skipped = []
     processed = 0
-    matched_count = 0
-    updated_count = 0
-    unmatched_count = 0
-    invalid_count = 0
-
-    matched_students = []
-    unmatched_students = []
-    invalid_rows = []
-
     try:
-        ensure_student_detail_columns(db)
-
-        for row_number, row in enumerate(rows[1:], start=2):
-            if not any(clean_upload_value(val) for val in row):
+        for row_number, row in enumerate(rows, start=2):
+            values = list(row)[:6]
+            if not any(clean_upload_value(value) for value in values):
                 continue
             processed += 1
 
-            registration_number = clean_upload_value(row[reg_idx]) if reg_idx < len(row) else None
-            if not registration_number or str(registration_number).startswith('Note:'):
-                invalid_count += 1
-                invalid_rows.append({'row': row_number, 'reason': 'Missing Registration Number'})
+            registration_number = clean_upload_value(values[0] if len(values) > 0 else None)
+            if not registration_number:
+                skipped.append({'row': row_number, 'reason': 'Missing Registration Number'})
                 continue
 
-            # Lookup student in database
-            student_row = db.execute(
-                text('SELECT id, reg_number, name, department, course, year, semester FROM students WHERE UPPER(reg_number) = UPPER(:reg)'),
-                {'reg': registration_number}
-            ).fetchone()
-
-            if not student_row:
-                unmatched_count += 1
-                unmatched_students.append({
-                    'row': row_number,
-                    'registration_number': registration_number,
-                    'reason': 'Student Registration Number not found in system database'
-                })
+            # Check if student exists
+            student_id = db.execute(
+                text('SELECT id FROM students WHERE UPPER(reg_number) = UPPER(:reg_number)'),
+                {'reg_number': registration_number}
+            ).scalar()
+            
+            if not student_id:
+                skipped.append({'row': row_number, 'reason': 'Unmatched student', 'registration_number': registration_number})
                 continue
 
-            matched_count += 1
-            student_id = student_row[0]
+            try:
+                attendance = float(values[1]) if values[1] is not None else 0.0
+                test_avg = float(values[2]) if values[2] is not None else 0.0
+                assignment_avg = float(values[3]) if values[3] is not None else 0.0
+                delays = int(values[4]) if values[4] is not None else 0
+                trend = clean_upload_value(values[5]) or 'Stable'
 
-            # 1. Update Academic Data if present in row
-            att = float(row[att_idx]) if att_idx is not None and att_idx < len(row) and row[att_idx] is not None else None
-            test_score = float(row[test_idx]) if test_idx is not None and test_idx < len(row) and row[test_idx] is not None else None
-            assign_score = float(row[assign_idx]) if assign_idx is not None and assign_idx < len(row) and row[assign_idx] is not None else None
-            delays = int(row[delay_idx]) if delay_idx is not None and delay_idx < len(row) and row[delay_idx] is not None else None
-            trend = clean_upload_value(row[trend_idx]) if trend_idx is not None and trend_idx < len(row) else 'Stable'
-
-            pred_risk = None
-            if att is not None and test_score is not None and assign_score is not None and delays is not None:
-                existing_acad = db.execute(
+                # Upsert academic records
+                existing_record = db.execute(
                     text('SELECT id FROM academic_records WHERE student_id = :sid'),
                     {'sid': student_id}
                 ).scalar()
 
-                if existing_acad:
+                if existing_record:
                     db.execute(text("""
                         UPDATE academic_records SET
                             attendance_pct = :att,
                             avg_test_score = :test,
                             avg_assignment_score = :assign,
                             submission_delays = :delays,
-                            performance_trend = :trend
+                            performance_trend = :trend,
+                            last_updated = CURRENT_TIMESTAMP
                         WHERE student_id = :sid
                     """), {
-                        'sid': student_id,
-                        'att': att,
-                        'test': test_score,
-                        'assign': assign_score,
-                        'delays': delays,
-                        'trend': trend or 'Stable'
+                        'att': attendance, 'test': test_avg, 'assign': assignment_avg,
+                        'delays': delays, 'trend': trend, 'sid': student_id
                     })
                 else:
                     db.execute(text("""
                         INSERT INTO academic_records (
-                            student_id, attendance_pct, avg_test_score, avg_assignment_score, submission_delays, performance_trend
+                            student_id, attendance_pct, avg_test_score, avg_assignment_score,
+                            submission_delays, performance_trend
                         ) VALUES (
                             :sid, :att, :test, :assign, :delays, :trend
                         )
                     """), {
-                        'sid': student_id,
-                        'att': att,
-                        'test': test_score,
-                        'assign': assign_score,
-                        'delays': delays,
-                        'trend': trend or 'Stable'
+                        'sid': student_id, 'att': attendance, 'test': test_avg, 
+                        'assign': assignment_avg, 'delays': delays, 'trend': trend
                     })
-
-                # Compute real-time ML prediction on the 5 uploaded features
-                acad_data = {
-                    'attendance_pct': att,
-                    'avg_test_score': test_score,
-                    'avg_assignment_score': assign_score,
-                    'submission_delays': delays,
-                    'performance_trend': trend or 'Stable'
-                }
-                pred_risk = risk_predictor.predict_risk(acad_data)
-                updated_count += 1
-
-            # 2. Update Student Profile details if present in row
-            update_profile_kwargs = {}
-            if name_idx is not None and name_idx < len(row) and clean_upload_value(row[name_idx]):
-                update_profile_kwargs['name'] = clean_upload_value(row[name_idx])
-            if dept_idx is not None and dept_idx < len(row) and clean_upload_value(row[dept_idx]):
-                update_profile_kwargs['department'] = clean_upload_value(row[dept_idx])
-            if course_idx is not None and course_idx < len(row) and clean_upload_value(row[course_idx]):
-                update_profile_kwargs['course'] = clean_upload_value(row[course_idx])
-            if aadhaar_idx is not None and aadhaar_idx < len(row) and clean_upload_value(row[aadhaar_idx]):
-                update_profile_kwargs['aadhaar_number'] = clean_upload_value(row[aadhaar_idx])
-            if address_idx is not None and address_idx < len(row) and clean_upload_value(row[address_idx]):
-                update_profile_kwargs['address'] = clean_upload_value(row[address_idx])
-
-            if update_profile_kwargs:
-                set_clauses = [f"{col} = :{col}" for col in update_profile_kwargs]
-                update_profile_kwargs['sid'] = student_id
-                db.execute(text(f"UPDATE students SET {', '.join(set_clauses)} WHERE id = :sid"), update_profile_kwargs)
-
-            matched_students.append({
-                'student_id': student_id,
-                'reg_number': student_row[1],
-                'name': student_row[2],
-                'department': student_row[3],
-                'attendance_pct': att,
-                'avg_test_score': test_score,
-                'avg_assignment_score': assign_score,
-                'submission_delays': delays,
-                'performance_trend': trend,
-                'predicted_risk_level': pred_risk['risk_level'] if pred_risk else 'N/A',
-                'risk_score': pred_risk['risk_score'] if pred_risk else 0
-            })
+                added_or_updated += 1
+            except Exception as error:
+                skipped.append({'row': row_number, 'reason': f'Invalid data format: {error}', 'registration_number': registration_number})
 
         db.commit()
         return jsonify({
             'success': True,
-            'message': f"Upload completed: {processed} records received, {matched_count} matched, {updated_count} updated, {unmatched_count} unmatched, {invalid_count} invalid.",
-            'summary': {
-                'records_received': processed,
-                'matched': matched_count,
-                'updated': updated_count,
-                'unmatched': unmatched_count,
-                'invalid': invalid_count
-            },
-            'matched_students': matched_students,
-            'unmatched_students': unmatched_students,
-            'invalid_rows': invalid_rows
+            'message': f'{added_or_updated} student academic record(s) synced successfully.',
+            'summary': {'processed': processed, 'added_or_updated': added_or_updated, 'skipped': len(skipped)},
+            'skipped_rows': skipped
         })
     except Exception as error:
         db.rollback()
-        return jsonify({'success': False, 'message': f'Upload processing error: {error}'}), 500
+        return jsonify({'success': False, 'message': f'Upload failed: {error}'}), 500
     finally:
         db.close()
         if workbook is not None:
@@ -274,6 +188,7 @@ def student_detail_payload(row):
         'batch': row[12]
     }
 
+
 @faculty_bp.route('/student-details', methods=['GET'])
 def list_student_details():
     db = next(get_db())
@@ -288,14 +203,85 @@ def list_student_details():
     finally:
         db.close()
 
+
+@faculty_bp.route('/student-details/<int:student_id>', methods=['PUT'])
+def update_student_details(student_id):
+    data = request.get_json() or {}
+    required = ['reg_number', 'name', 'department', 'course', 'year', 'semester']
+    if any(not str(data.get(field, '')).strip() for field in required):
+        return jsonify({'success': False, 'message': 'Registration Number, Name, Department, Course, Year, and Semester are required.'}), 400
+
+    db = next(get_db())
+    try:
+        ensure_student_detail_columns(db)
+        existing_student = db.execute(text('SELECT id FROM students WHERE id = :student_id'), {'student_id': student_id}).scalar()
+        if not existing_student:
+            return jsonify({'success': False, 'message': 'Student record not found.'}), 404
+        duplicate = db.execute(text("""
+            SELECT id FROM students
+            WHERE UPPER(reg_number) = UPPER(:reg_number) AND id != :student_id
+        """), {'reg_number': str(data['reg_number']).strip(), 'student_id': student_id}).scalar()
+        if duplicate:
+            return jsonify({'success': False, 'message': 'That Registration Number already exists.'}), 409
+
+        result = db.execute(text("""
+            UPDATE students SET
+                reg_number = :reg_number, name = :name, department = :department,
+                course = :course, year = :year, semester = :semester,
+                aadhaar_number = :aadhaar_number, address = :address, dob = :dob,
+                father_name = :father_name, mother_name = :mother_name, batch = :batch
+            WHERE id = :student_id
+        """), {
+            'student_id': student_id,
+            'reg_number': str(data['reg_number']).strip(),
+            'name': str(data['name']).strip(),
+            'department': str(data['department']).strip(),
+            'course': str(data['course']).strip(),
+            'year': int(data['year']),
+            'semester': int(data['semester']),
+            'aadhaar_number': clean_upload_value(data.get('aadhaar_number')),
+            'address': clean_upload_value(data.get('address')),
+            'dob': clean_upload_value(data.get('dob')),
+            'father_name': clean_upload_value(data.get('father_name')),
+            'mother_name': clean_upload_value(data.get('mother_name')),
+            'batch': clean_upload_value(data.get('batch'))
+        })
+        if result.rowcount != 1:
+            db.rollback()
+            return jsonify({'success': False, 'message': 'Student record not found.'}), 404
+        db.commit()
+        return jsonify({'success': True, 'message': 'Student details saved successfully.'})
+    except (TypeError, ValueError):
+        db.rollback()
+        return jsonify({'success': False, 'message': 'Year and Semester must be valid numbers.'}), 400
+    finally:
+        db.close()
+
+
+@faculty_bp.route('/student-details/<int:student_id>', methods=['DELETE'])
+def delete_student_details(student_id):
+    db = next(get_db())
+    try:
+        result = db.execute(text('DELETE FROM students WHERE id = :student_id'), {'student_id': student_id})
+        if result.rowcount != 1:
+            db.rollback()
+            return jsonify({'success': False, 'message': 'Student record not found.'}), 404
+        db.commit()
+        return jsonify({'success': True, 'message': 'Student details deleted successfully.'})
+    finally:
+        db.close()
+
+
 @faculty_bp.route('/dashboard-stats', methods=['GET'])
 def get_faculty_dashboard_stats():
     db = next(get_db())
     try:
+        # Get all students with academic records
         students_query = text("""
             SELECT s.id, s.reg_number, s.name, s.department, 
                    a.attendance_pct, a.avg_test_score, a.avg_assignment_score, 
-                   a.submission_delays, a.performance_trend
+                   a.submission_delays, a.performance_trend,
+                   a.math_score, a.dbms_score, a.os_score, a.dsa_score
             FROM students s
             LEFT JOIN academic_records a ON s.id = a.student_id
         """)
@@ -307,23 +293,27 @@ def get_faculty_dashboard_stats():
         low_risk_count = 0
 
         for row in student_rows:
-            if row[4] is not None and row[5] is not None and row[6] is not None and row[7] is not None:
-                acad = {
-                    'attendance_pct': float(row[4]),
-                    'avg_test_score': float(row[5]),
-                    'avg_assignment_score': float(row[6]),
-                    'submission_delays': int(row[7]),
-                    'performance_trend': row[8] or 'Stable'
-                }
-                pred = risk_predictor.predict_risk(acad)
-                lvl = pred['risk_level']
-                if lvl == 'HIGH':
-                    high_risk_count += 1
-                elif lvl == 'MEDIUM':
-                    med_risk_count += 1
-                else:
-                    low_risk_count += 1
+            acad = {
+                'attendance_pct': float(row[4]) if row[4] is not None else 75.0,
+                'avg_test_score': float(row[5]) if row[5] is not None else 70.0,
+                'avg_assignment_score': float(row[6]) if row[6] is not None else 75.0,
+                'submission_delays': int(row[7]) if row[7] is not None else 0,
+                'performance_trend': row[8] or 'Stable',
+                'math_score': float(row[9] or 70.0),
+                'dbms_score': float(row[10] or 70.0),
+                'os_score': float(row[11] or 70.0),
+                'dsa_score': float(row[12] or 70.0)
+            }
+            pred = risk_predictor.predict_risk(acad)
+            lvl = pred['risk_level']
+            if lvl == 'HIGH':
+                high_risk_count += 1
+            elif lvl == 'MEDIUM':
+                med_risk_count += 1
+            else:
+                low_risk_count += 1
 
+        # Count pending applications
         pending_od = db.execute(text("SELECT COUNT(*) FROM od_applications WHERE status = 'Pending'")).scalar() or 0
         pending_leave = db.execute(text("SELECT COUNT(*) FROM leave_applications WHERE status = 'Pending'")).scalar() or 0
         pending_extracurricular = db.execute(text("SELECT COUNT(*) FROM extracurricular_activities WHERE verification_status = 'Pending'")).scalar() or 0
@@ -350,7 +340,8 @@ def get_risk_watchlist():
         query = text("""
             SELECT s.id, s.reg_number, s.name, s.department, s.course, s.year, s.semester,
                    a.attendance_pct, a.avg_test_score, a.avg_assignment_score, 
-                   a.submission_delays, a.performance_trend, s.mentor_name
+                   a.submission_delays, a.performance_trend,
+                   a.math_score, a.dbms_score, a.os_score, a.dsa_score, s.mentor_name
             FROM students s
             LEFT JOIN academic_records a ON s.id = a.student_id
             ORDER BY s.id ASC
@@ -359,62 +350,44 @@ def get_risk_watchlist():
 
         watchlist = []
         for r in rows:
-            has_acad = (r[7] is not None and r[8] is not None and r[9] is not None and r[10] is not None)
-            if has_acad:
-                acad = {
-                    'attendance_pct': float(r[7]),
-                    'avg_test_score': float(r[8]),
-                    'avg_assignment_score': float(r[9]),
-                    'submission_delays': int(r[10]),
-                    'performance_trend': r[11] or 'Stable',
-                    'mentor_name': r[12] or 'Faculty Advisor'
-                }
-                pred = risk_predictor.predict_risk(acad)
-                interventions = intervention_engine.generate_intervention_plan(acad, pred)
+            acad = {
+                'attendance_pct': float(r[7]) if r[7] is not None else 75.0,
+                'avg_test_score': float(r[8]) if r[8] is not None else 70.0,
+                'avg_assignment_score': float(r[9]) if r[9] is not None else 75.0,
+                'submission_delays': int(r[10]) if r[10] is not None else 0,
+                'performance_trend': r[11] or 'Stable',
+                'math_score': float(r[12] or 70.0),
+                'dbms_score': float(r[13] or 70.0),
+                'os_score': float(r[14] or 70.0),
+                'dsa_score': float(r[15] or 70.0),
+                'mentor_name': r[16] or 'Faculty Advisor'
+            }
+            pred = risk_predictor.predict_risk(acad)
+            interventions = intervention_engine.generate_intervention_plan(acad, pred)
 
-                watchlist.append({
-                    'id': r[0],
-                    'reg_number': r[1],
-                    'name': r[2],
-                    'department': r[3],
-                    'course': r[4],
-                    'year': r[5],
-                    'semester': r[6],
-                    'attendance_pct': acad['attendance_pct'],
-                    'avg_test_score': acad['avg_test_score'],
-                    'avg_assignment_score': acad['avg_assignment_score'],
-                    'submission_delays': acad['submission_delays'],
-                    'performance_trend': acad['performance_trend'],
-                    'risk_score': pred['risk_score'],
-                    'risk_level': pred['risk_level'],
-                    'risk_factors': pred['risk_factors'],
-                    'intervention_summary': interventions['summary'],
-                    'action_items': interventions['action_items'],
-                    'mentor_alerted': interventions['mentor_alerted']
-                })
-            else:
-                watchlist.append({
-                    'id': r[0],
-                    'reg_number': r[1],
-                    'name': r[2],
-                    'department': r[3],
-                    'course': r[4],
-                    'year': r[5],
-                    'semester': r[6],
-                    'attendance_pct': None,
-                    'avg_test_score': None,
-                    'avg_assignment_score': None,
-                    'submission_delays': None,
-                    'performance_trend': None,
-                    'risk_score': 0,
-                    'risk_level': 'Insufficient Data',
-                    'risk_factors': ['Insufficient data for prediction'],
-                    'intervention_summary': 'Upload academic performance data to generate risk diagnostics.',
-                    'action_items': [],
-                    'mentor_alerted': False
-                })
+            watchlist.append({
+                'id': r[0],
+                'reg_number': r[1],
+                'name': r[2],
+                'department': r[3],
+                'course': r[4],
+                'year': r[5],
+                'semester': r[6],
+                'attendance_pct': acad['attendance_pct'],
+                'avg_test_score': acad['avg_test_score'],
+                'avg_assignment_score': acad['avg_assignment_score'],
+                'submission_delays': acad['submission_delays'],
+                'performance_trend': acad['performance_trend'],
+                'risk_score': pred['risk_score'],
+                'risk_level': pred['risk_level'],
+                'risk_factors': pred['risk_factors'],
+                'intervention_summary': interventions['summary'],
+                'action_items': interventions['action_items'],
+                'mentor_alerted': interventions['mentor_alerted']
+            })
 
-        risk_order = {'HIGH': 3, 'MEDIUM': 2, 'LOW': 1, 'Insufficient Data': 0}
+        # Rank: High risk on top (sorted by risk_score descending)
+        risk_order = {'HIGH': 3, 'MEDIUM': 2, 'LOW': 1}
         watchlist.sort(key=lambda x: (risk_order.get(x['risk_level'], 0), x['risk_score']), reverse=True)
 
         return jsonify({
@@ -424,11 +397,13 @@ def get_risk_watchlist():
     finally:
         db.close()
 
+
 @faculty_bp.route('/student/<reg_number>/report', methods=['GET'])
 def get_student_full_report(reg_number):
     db = next(get_db())
     try:
-        student = db.execute(text("SELECT * FROM students WHERE UPPER(reg_number) = UPPER(:reg)"), {'reg': reg_number}).fetchone()
+        # 1. Profile
+        student = db.execute(text("SELECT * FROM students WHERE reg_number = :reg"), {'reg': reg_number}).fetchone()
         if not student:
             return jsonify({'success': False, 'message': 'Student not found'}), 404
         
@@ -441,65 +416,67 @@ def get_student_full_report(reg_number):
             'course': student[4],
             'year': student[5],
             'semester': student[6],
-            'section': student[7] if len(student) > 7 else '',
-            'email': student[8] if len(student) > 8 else '',
-            'phone': student[9] if len(student) > 9 else '',
-            'mentor_name': student[10] if len(student) > 10 else 'Faculty Advisor'
+            'section': student[7],
+            'email': student[8],
+            'phone': student[9],
+            'mentor_name': student[10]
         }
 
+        # 2. Academic & Risk (We'll use risk_predictor and intervention_engine directly)
         acad_row = db.execute(text("SELECT * FROM academic_records WHERE student_id = :sid"), {'sid': student_id}).fetchone()
-        if acad_row and acad_row[2] is not None and acad_row[3] is not None:
-            acad = {
-                'attendance_pct': float(acad_row[2]),
-                'avg_test_score': float(acad_row[3]),
-                'avg_assignment_score': float(acad_row[4]),
-                'submission_delays': int(acad_row[5]),
-                'performance_trend': acad_row[6] or 'Stable'
-            }
-            pred = risk_predictor.predict_risk(acad)
-            interventions = intervention_engine.generate_intervention_plan(acad, pred)
-            academic_summary = {**acad, **pred, 'interventions': interventions['action_items']}
-        else:
-            academic_summary = {
-                'attendance_pct': None,
-                'avg_test_score': None,
-                'avg_assignment_score': None,
-                'submission_delays': None,
-                'performance_trend': None,
-                'risk_score': 0,
-                'risk_level': 'Insufficient Data',
-                'risk_factors': ['Insufficient data for prediction'],
-                'interventions': []
-            }
+        acad = {
+            'attendance_pct': float(acad_row[2]) if acad_row and acad_row[2] is not None else 75.0,
+            'avg_test_score': float(acad_row[3]) if acad_row and acad_row[3] is not None else 70.0,
+            'avg_assignment_score': float(acad_row[4]) if acad_row and acad_row[4] is not None else 75.0,
+            'submission_delays': int(acad_row[5]) if acad_row and acad_row[5] is not None else 0,
+            'performance_trend': acad_row[6] if acad_row and acad_row[6] else 'Stable',
+            'math_score': float(acad_row[7] if acad_row and acad_row[7] else 70.0),
+            'dbms_score': float(acad_row[8] if acad_row and acad_row[8] else 70.0),
+            'os_score': float(acad_row[9] if acad_row and acad_row[9] else 70.0),
+            'dsa_score': float(acad_row[10] if acad_row and acad_row[10] else 70.0)
+        }
+        pred = risk_predictor.predict_risk(acad)
+        interventions = intervention_engine.generate_intervention_plan(acad, pred)
 
+        academic_summary = {**acad, **pred, 'interventions': interventions['action_items']}
+
+        # 3. OD Applications
         ods = db.execute(text("SELECT * FROM od_applications WHERE student_id = :sid"), {'sid': student_id}).fetchall()
         od_list = []
         od_days_total = 0
         for od in ods:
-            try:
-                d1 = datetime.datetime.strptime(od[2], '%Y-%m-%d')
-                d2 = datetime.datetime.strptime(od[3], '%Y-%m-%d')
-                days = (d2 - d1).days + 1
-            except Exception:
-                days = 1
+            d1 = datetime.datetime.strptime(od[2], '%Y-%m-%d')
+            d2 = datetime.datetime.strptime(od[3], '%Y-%m-%d')
+            days = (d2 - d1).days + 1
             if od[8] == 'Approved':
                 od_days_total += days
-            od_list.append({'from_date': od[2], 'to_date': od[3], 'purpose': od[4], 'status': od[8], 'days': days})
+            od_list.append({
+                'from_date': od[2],
+                'to_date': od[3],
+                'purpose': od[4],
+                'status': od[8],
+                'days': days
+            })
 
+        # 4. Leave Applications
         leaves = db.execute(text("SELECT * FROM leave_applications WHERE student_id = :sid"), {'sid': student_id}).fetchall()
         leave_list = []
         leave_days_total = 0
         for lv in leaves:
-            try:
-                d1 = datetime.datetime.strptime(lv[2], '%Y-%m-%d')
-                d2 = datetime.datetime.strptime(lv[3], '%Y-%m-%d')
-                days = (d2 - d1).days + 1
-            except Exception:
-                days = 1
+            d1 = datetime.datetime.strptime(lv[2], '%Y-%m-%d')
+            d2 = datetime.datetime.strptime(lv[3], '%Y-%m-%d')
+            days = (d2 - d1).days + 1
             if lv[6] == 'Approved':
                 leave_days_total += days
-            leave_list.append({'from_date': lv[2], 'to_date': lv[3], 'purpose': lv[4], 'status': lv[6], 'days': days})
+            leave_list.append({
+                'from_date': lv[2],
+                'to_date': lv[3],
+                'purpose': lv[4],
+                'status': lv[6],
+                'days': days
+            })
 
+        # 5. Extracurriculars
         extras = db.execute(text("SELECT * FROM extracurricular_activities WHERE student_id = :sid"), {'sid': student_id}).fetchall()
         extra_list = [{'type': e[2], 'event_name': e[3], 'date': e[4], 'status': e[8]} for e in extras]
 
@@ -518,3 +495,117 @@ def get_student_full_report(reg_number):
         return jsonify({'success': False, 'message': 'Failed to generate report'}), 500
     finally:
         db.close()
+
+
+@faculty_bp.route('/student/<reg_number>/report/pdf', methods=['GET'])
+def download_student_report_pdf(reg_number):
+    # Reuse the json endpoint logic to gather data
+    from flask import current_app
+    with current_app.test_request_context():
+        resp = get_student_full_report(reg_number)
+        if resp.status_code != 200:
+            return jsonify({'success': False, 'message': 'Student not found'}), 404
+        data = resp.get_json()['data']
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Custom Styles
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], alignment=1, spaceAfter=20)
+    heading_style = ParagraphStyle('Heading', parent=styles['Heading2'], spaceBefore=15, spaceAfter=10, textColor=colors.HexColor('#2c3e50'))
+    normal_style = styles['Normal']
+
+    # 1. Header
+    elements.append(Paragraph(f"Comprehensive Student Report", title_style))
+    elements.append(Paragraph(f"<b>Student Name:</b> {data['profile']['name']}  |  <b>Reg No:</b> {data['profile']['reg_number']}", normal_style))
+    elements.append(Paragraph(f"<b>Department:</b> {data['profile']['department']}  |  <b>Year/Sem:</b> {data['profile']['year']}/{data['profile']['semester']}", normal_style))
+    elements.append(Spacer(1, 20))
+
+    # 2. Academic Performance
+    elements.append(Paragraph("Academic Diagnostics", heading_style))
+    acad = data['academic']
+    acad_data = [
+        ['Metric', 'Value'],
+        ['Attendance', f"{acad['attendance_pct']}%"],
+        ['Avg Test Score', f"{acad['avg_test_score']}%"],
+        ['Assignment Score', f"{acad['avg_assignment_score']}%"],
+        ['Submission Delays', f"{acad['submission_delays']} delays"],
+        ['Performance Trend', acad['performance_trend']],
+        ['Risk Level', acad['risk_level']],
+        ['Risk Score', f"{acad['risk_score']}/100"]
+    ]
+    t = Table(acad_data, colWidths=[200, 200])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (1,0), colors.HexColor('#34495e')),
+        ('TEXTCOLOR', (0,0), (1,0), colors.whitesmoke),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0,0), (-1,0), 12),
+        ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#ecf0f1')),
+        ('GRID', (0,0), (-1,-1), 1, colors.white)
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 20))
+
+    # 3. OD & Leave Summary
+    elements.append(Paragraph("OD & Leave Summary", heading_style))
+    od_lv_data = [
+        ['Type', 'Total Approved Days'],
+        ['On Duty (OD)', str(data['od_summary']['total_approved_days'])],
+        ['Leave', str(data['leave_summary']['total_approved_days'])]
+    ]
+    t2 = Table(od_lv_data, colWidths=[200, 200])
+    t2.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (1,0), colors.HexColor('#8b5cf6')),
+        ('TEXTCOLOR', (0,0), (1,0), colors.whitesmoke),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0,0), (-1,0), 12),
+        ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#f3f4f6')),
+        ('GRID', (0,0), (-1,-1), 1, colors.white)
+    ]))
+    elements.append(t2)
+    elements.append(Spacer(1, 20))
+
+    # 4. Extracurriculars
+    elements.append(Paragraph("Extracurricular Activities", heading_style))
+    if data['extracurriculars']:
+        ex_data = [['Type', 'Event', 'Date', 'Status']]
+        for ex in data['extracurriculars']:
+            ex_data.append([ex['type'], ex['event_name'], ex['date'], ex['status']])
+        t3 = Table(ex_data, colWidths=[100, 150, 80, 70])
+        t3.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#3b82f6')),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 12),
+            ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#f3f4f6')),
+            ('GRID', (0,0), (-1,-1), 1, colors.white)
+        ]))
+        elements.append(t3)
+    else:
+        elements.append(Paragraph("No extracurricular activities recorded.", normal_style))
+    
+    elements.append(Spacer(1, 20))
+
+    # 5. Risk Factors & Interventions
+    elements.append(Paragraph("Risk Factors & Action Items", heading_style))
+    for factor in acad.get('risk_factors', []):
+        elements.append(Paragraph(f"- {factor}", normal_style))
+    
+    elements.append(Spacer(1, 10))
+    for item in acad.get('interventions', []):
+        elements.append(Paragraph(f"<b>[{item['priority']}] {item['title']}</b>: {item['recommendation']}", normal_style))
+
+    doc.build(elements)
+    buffer.seek(0)
+    
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"Student_Report_{reg_number}.pdf",
+        mimetype='application/pdf'
+    )

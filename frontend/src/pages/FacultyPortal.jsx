@@ -334,16 +334,16 @@ export default function FacultyPortal({ faculty, activeTab, setActiveTab }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '22px' }}>
             <UploadCloud size={28} color="var(--accent-blue)" />
             <div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>Upload Student Details</h3>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>Sync Academic ML Data</h3>
               <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
-                Append new student records using the fixed 12-column Excel template.
+                Update existing student academic records for risk prediction using the 6-column ML template.
               </p>
             </div>
           </div>
 
           <div style={{ padding: '18px', marginBottom: '20px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', background: 'var(--bg-secondary)' }}>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              Required order: Registration Number, Name, Aadhaar Number, Address, DOB, Father's Name, Mother's Name, Batch, Year, Semester, Course, Department.
+              Required order: Registration Number, attendance_percentage, test_average, assignment_average, submission_delay_count, performance_trend.
             </p>
           </div>
 
